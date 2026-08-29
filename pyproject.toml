@@ -1,0 +1,13 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ctxcost"
+version = "0.0.1"
+description = "Draft static cost analyzer for multi-agent context graphs"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+ctxcost = "ctxcost.cli:main"

@@ -1,0 +1,23 @@
+[project]
+root = "."
+bytes_per_token = 4.0
+
+[[agents]]
+name = "reviewer"
+engine = "claude-code"
+fires_per_day = 8
+include = [
+  "AGENTS.md",
+  ".claude/agents/reviewer.md",
+  ".claude/skills/regression-review/**/*.md",
+]
+
+[[agents]]
+name = "implementer"
+engine = "codex"
+fires_per_day = 8
+include = [
+  "AGENTS.md",
+  ".codex/agents/implementer.toml",
+  ".codex/skills/**/*.md",
+]
