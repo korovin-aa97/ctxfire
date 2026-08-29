@@ -39,7 +39,7 @@ tokenizers = ["tiktoken>=0.7,<1"]
 dev = [
   "build>=1.2,<2",
   "jsonschema>=4.23,<5",
-  "mypy>=1.11,<2",
+  "mypy>=1.11,<3",
   "pytest>=9.0.3,<10",
   "ruff>=0.6,<1",
   "tiktoken>=0.7,<1",
