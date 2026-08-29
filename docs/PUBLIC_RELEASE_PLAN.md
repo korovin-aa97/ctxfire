@@ -1,7 +1,8 @@
 # ctxfire — Public Release Plan
 
-Status: `v0.1.1` is public on GitHub and PyPI through an OIDC trusted publisher
-with attestations. Later launch promotion remains intentionally separate.
+Status: `v0.1.2` is public on GitHub under the immutable-releases policy and on
+PyPI through an OIDC trusted publisher with attestations. Later launch
+promotion remains intentionally separate.
 
 ## Release thesis
 

@@ -3,6 +3,15 @@
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
 this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.2] - 2026-08-30
+
+### Changed
+
+- Publish distribution artifacts under GitHub's immutable-releases policy.
+- Refresh installation examples and release metadata for version 0.1.2.
+
+There are no runtime or report-schema changes from 0.1.1.
+
 ## [0.1.1] - 2026-08-30
 
 ### Fixed
@@ -33,5 +42,6 @@ this project uses [Semantic Versioning](https://semver.org/).
 - Explicit token, schedule, conditional-activation, cache, price, and model assumptions.
 - Reproducible fixtures, external-repository validation, packaging, and CI.
 
+[0.1.2]: https://github.com/korovin-aa97/ctxfire/releases/tag/v0.1.2
 [0.1.1]: https://github.com/korovin-aa97/ctxfire/releases/tag/v0.1.1
 [0.1.0]: https://github.com/korovin-aa97/ctxfire/releases/tag/v0.1.0
