@@ -5,11 +5,14 @@ import os
 import subprocess
 import tempfile
 import unittest
+from importlib.metadata import version
 from pathlib import Path
 
+from ctxfire import __version__
 from ctxfire.adapters import matches
 from ctxfire.cli import EXIT_BUDGET_EXCEEDED, EXIT_ERROR, EXIT_OK, main
 from ctxfire.config import load_config
+from ctxfire.discovery import inventory
 from ctxfire.scanner import scan
 
 
@@ -128,6 +131,34 @@ class ScanTests(RepositoryFixture):
         self.assertFalse(any(item.path == "AGENTS-link.md" for item in report.agents[0].files))
         self.assertTrue(any("skipped symlink" in warning for warning in report.warnings))
 
+    def test_exact_probe_does_not_follow_a_symlinked_ancestor(self) -> None:
+        with tempfile.TemporaryDirectory() as external_directory:
+            external = Path(external_directory)
+            (external / "AGENTS.md").write_text("outside project", encoding="utf-8")
+            os.symlink(external, self.root / "linked")
+            config_path = self.config()
+            config_path.write_text(
+                config_path.read_text(encoding="utf-8").replace(
+                    'working_directory = "apps/api"', 'working_directory = "linked"'
+                ),
+                encoding="utf-8",
+            )
+            report = scan(load_config(config_path))
+        self.assertNotIn("linked/AGENTS.md", {item.path for item in report.agents[0].files})
+        self.assertIn("skipped symlink: linked/AGENTS.md", report.warnings)
+
+    def test_explicit_include_wins_a_same_activation_instruction_cap_tie(self) -> None:
+        config_path = self.config()
+        with config_path.open("a", encoding="utf-8") as handle:
+            handle.write('instruction_max_bytes = 1\ninclude = ["AGENTS.md"]\n')
+        root_instruction = next(
+            item
+            for item in scan(load_config(config_path)).agents[0].files
+            if item.path == "AGENTS.md"
+        )
+        self.assertEqual(root_instruction.exact_bytes, root_instruction.counted_bytes)
+        self.assertEqual("explicit include", root_instruction.reason)
+
     def test_reports_are_deterministic(self) -> None:
         config = load_config(self.config())
         self.assertEqual(scan(config).as_dict(), scan(config).as_dict())
@@ -176,6 +207,16 @@ class ScanTests(RepositoryFixture):
         report = scan(load_config(self.config()))
         self.assertNotIn("vendor/nested/AGENTS.md", {item.path for item in report.agents[0].files})
 
+    def test_filesystem_fallback_warns_about_symlinked_directories(self) -> None:
+        with tempfile.TemporaryDirectory() as fallback_directory:
+            fallback = Path(fallback_directory)
+            target = fallback / "target"
+            target.mkdir()
+            os.symlink(target, fallback / "linked")
+            found = inventory(fallback)
+        self.assertEqual("filesystem-fallback", found.method)
+        self.assertIn("linked", found.skipped_symlinks)
+
 
 class CliTests(RepositoryFixture):
     def test_scan_json_and_diff(self) -> None:
@@ -216,11 +257,135 @@ class CliTests(RepositoryFixture):
         payload = json.loads(output.read_text())
         self.assertEqual("2.1.0", payload["version"])
         self.assertTrue(payload["runs"][0]["results"])
+        location = payload["runs"][0]["results"][0]["locations"][0]["physicalLocation"]
+        self.assertEqual("ctxfire.toml", location["artifactLocation"]["uri"])
+
+    def test_sarif_names_a_custom_config_without_leaking_its_absolute_path(self) -> None:
+        config = self.config()
+        custom_config = self.root / "custom-budget.toml"
+        config.rename(custom_config)
+        output = self.root / "result.sarif"
+        self.assertEqual(
+            EXIT_BUDGET_EXCEEDED,
+            main(
+                [
+                    "check",
+                    "--config",
+                    str(custom_config),
+                    "--max-tokens-per-day",
+                    "0",
+                    "--format",
+                    "sarif",
+                    "--output",
+                    str(output),
+                ]
+            ),
+        )
+        payload = json.loads(output.read_text())
+        serialized = output.read_text()
+        location = payload["runs"][0]["results"][0]["locations"][0]["physicalLocation"]
+        self.assertEqual("custom-budget.toml", location["artifactLocation"]["uri"])
+        self.assertNotIn(str(self.root), serialized)
 
     def test_bad_schema_is_a_controlled_error(self) -> None:
         config = self.config()
         config.write_text('schema_version = "99"\n', encoding="utf-8")
         self.assertEqual(EXIT_ERROR, main(["scan", "--config", str(config)]))
+
+    def test_bad_glob_is_a_controlled_error(self) -> None:
+        config = self.config()
+        with config.open("a", encoding="utf-8") as handle:
+            handle.write('include = ["[z-a]"]\n')
+        self.assertEqual(EXIT_ERROR, main(["scan", "--config", str(config)]))
+
+    def test_non_finite_budget_is_a_controlled_error(self) -> None:
+        self.assertEqual(
+            EXIT_ERROR,
+            main(["check", "--config", str(self.config()), "--max-usd-per-day", "nan"]),
+        )
+
+    def test_finite_assumptions_that_overflow_a_result_are_a_controlled_error(self) -> None:
+        config = self.config()
+        config.write_text(
+            config.read_text(encoding="utf-8").replace(
+                "fires_per_day = 2", "fires_per_day = 1e308"
+            ),
+            encoding="utf-8",
+        )
+        self.assertEqual(EXIT_ERROR, main(["scan", "--config", str(config)]))
+
+    def test_argparse_input_error_uses_the_documented_error_exit(self) -> None:
+        self.assertEqual(
+            EXIT_ERROR,
+            main(
+                [
+                    "check",
+                    "--config",
+                    str(self.config()),
+                    "--max-tokens-per-day",
+                    "not-an-integer",
+                ]
+            ),
+        )
+
+    def test_malformed_snapshot_is_a_controlled_error(self) -> None:
+        malformed = self.root / "malformed.json"
+        valid = self.root / "valid.json"
+        malformed.write_text(
+            '{"schema_version":"1.0","agents":[{"name":"broken","files":{}}]}',
+            encoding="utf-8",
+        )
+        self.assertEqual(
+            EXIT_OK,
+            main(
+                [
+                    "scan",
+                    "--config",
+                    str(self.config()),
+                    "--format",
+                    "json",
+                    "--output",
+                    str(valid),
+                ]
+            ),
+        )
+        self.assertEqual(EXIT_ERROR, main(["diff", str(malformed), str(valid)]))
+
+
+class ConfigValidationTests(RepositoryFixture):
+    def test_non_finite_numeric_assumptions_are_rejected(self) -> None:
+        replacements = (
+            ("bytes_per_token = 4", "bytes_per_token = nan"),
+            ("conditional_activation_rate = 0.5", "conditional_activation_rate = inf"),
+            ("usd_per_million_input_tokens = 3", "usd_per_million_input_tokens = nan"),
+            ("fires_per_day = 2", "fires_per_day = inf"),
+        )
+        for original, replacement in replacements:
+            with self.subTest(replacement=replacement):
+                config = self.config()
+                config.write_text(
+                    config.read_text(encoding="utf-8").replace(original, replacement),
+                    encoding="utf-8",
+                )
+                with self.assertRaisesRegex(ValueError, "finite"):
+                    load_config(config)
+
+    def test_backslash_paths_are_rejected_on_every_platform(self) -> None:
+        config = self.config()
+        config.write_text(
+            config.read_text(encoding="utf-8").replace(
+                'working_directory = "apps/api"', "working_directory = '..\\outside'"
+            ),
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ValueError, "POSIX separators"):
+            load_config(config)
+
+        config = self.config()
+        with config.open("a", encoding="utf-8") as handle:
+            handle.write("include = ['..\\outside.md']\n")
+        with self.assertRaisesRegex(ValueError, "POSIX paths"):
+            load_config(config)
 
 
 class PatternTests(unittest.TestCase):
@@ -233,6 +398,9 @@ class PatternTests(unittest.TestCase):
         self.assertTrue(matches("README.md", "README*"))
         self.assertFalse(matches("docs/README.md", "README*"))
         self.assertFalse(matches("rules/nested/python.md", "rules/*.md"))
+
+    def test_package_metadata_and_cli_version_source_stay_aligned(self) -> None:
+        self.assertEqual(version("ctxfire"), __version__)
 
 
 if __name__ == "__main__":

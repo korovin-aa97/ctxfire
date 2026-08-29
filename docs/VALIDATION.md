@@ -1,6 +1,6 @@
 # v0.1 validation report
 
-Run date: 2026-08-29. Tool version: 0.1.0. Repositories: 18 unrelated public
+Run date: 2026-08-30. Tool version: 0.1.1. Repositories: 18 unrelated public
 GitHub repositories at pinned commits.
 
 ## Method
@@ -19,9 +19,10 @@ failed the run unless all of these held:
 
 The corpus includes ordinary Python projects, Rust CLIs, multiple README
 languages, tracked symlinks, root `AGENTS.md`/`CLAUDE.md`, Claude skills, and a
-Codex skill. Fixture tests separately cover nested instruction chains,
-conditional weighting, excludes, missing config, symlink escape, schema errors,
-SARIF, diff, and budget exit codes.
+Codex skill. The 28 fixture tests plus four parameterized numeric cases
+separately cover nested instruction chains, conditional weighting, excludes,
+missing config, direct and ancestor symlink escape, malformed globs/snapshots,
+schema errors, SARIF, diff, and budget/error exit codes.
 
 ## Results
 

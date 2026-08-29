@@ -23,17 +23,11 @@ medium/high findings), Actionlint, JSON Schema validation, wheel/sdist checks,
 clean Python 3.11 and 3.12 installs, and a reproducible scan across 18 unrelated
 public repositories. See [`docs/VALIDATION.md`](VALIDATION.md).
 
-## Install from the release tag
+## Install
 
 ```bash
-pipx install git+https://github.com/korovin-aa97/ctxfire.git@v0.1.0
+pipx install 'ctxfire==0.1.0'
 ctxfire --version
-```
-
-After the optional PyPI trusted publisher is active, the shorter equivalent is:
-
-```bash
-pipx install ctxfire
 ```
 
 ## Important boundary

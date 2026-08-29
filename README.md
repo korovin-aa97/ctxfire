@@ -3,7 +3,7 @@
 **See what every coding agent loads, why it loads, and what that repeated
 context could cost.**
 
-![ctxfire context graph preview](docs/assets/social-preview.png)
+![ctxfire context graph preview](https://raw.githubusercontent.com/korovin-aa97/ctxfire/main/docs/assets/social-preview.png)
 
 `ctxfire` is a local, telemetry-free static analyzer for multi-agent context
 graphs. It connects agent definitions to repository instructions, rules, and
@@ -38,22 +38,24 @@ flat repository walk.
 
 ## Quickstart
 
-Python 3.11+ and Git are the only requirements.
+The runtime requires Python 3.11+ and Git. Install the published package with
+`pipx` (recommended) or another Python package manager:
 
 ```bash
-pipx install git+https://github.com/korovin-aa97/ctxfire.git@v0.1.0
+pipx install 'ctxfire==0.1.1'
 ctxfire --version
-cp ctxfire.example.toml ctxfire.toml
+curl -fsSLo ctxfire.toml \
+  https://raw.githubusercontent.com/korovin-aa97/ctxfire/v0.1.1/ctxfire.example.toml
 ctxfire scan
 ```
 
 Or run without a persistent install:
 
 ```bash
-uvx --from git+https://github.com/korovin-aa97/ctxfire.git@v0.1.0 ctxfire scan
+uvx --from 'ctxfire==0.1.1' ctxfire scan --config ctxfire.toml
 ```
 
-Start from [`ctxfire.example.toml`](ctxfire.example.toml):
+Start from [`ctxfire.example.toml`](https://github.com/korovin-aa97/ctxfire/blob/main/ctxfire.example.toml):
 
 ```toml
 schema_version = "1"
@@ -145,7 +147,7 @@ read only in memory; they are never printed, stored, or uploaded.
 
 Adapters are conservative static models, not claims that every candidate is
 loaded on every invocation. Details, source links, and known uncertainty are in
-[`docs/ADAPTER_SPEC.md`](docs/ADAPTER_SPEC.md).
+[`docs/ADAPTER_SPEC.md`](https://github.com/korovin-aa97/ctxfire/blob/main/docs/ADAPTER_SPEC.md).
 
 ## Git-aware and private by default
 
@@ -163,20 +165,20 @@ loaded on every invocation. Details, source links, and known uncertainty are in
   uploads content, or invokes a model.
 
 For non-Git directories, a clearly reported conservative filesystem fallback is
-used. See [`docs/PRIVACY.md`](docs/PRIVACY.md) and
-[`docs/DISCOVERY.md`](docs/DISCOVERY.md).
+used. See [`docs/PRIVACY.md`](https://github.com/korovin-aa97/ctxfire/blob/main/docs/PRIVACY.md)
+and [`docs/DISCOVERY.md`](https://github.com/korovin-aa97/ctxfire/blob/main/docs/DISCOVERY.md).
 
 ## CI example
 
 ```yaml
 - name: Enforce agent context budget
   run: |
-    pipx install git+https://github.com/korovin-aa97/ctxfire.git@v0.1.0
+    pipx install 'ctxfire==0.1.1'
     ctxfire check --max-tokens-per-day 75000 \
       --format sarif --output ctxfire.sarif
 ```
 
-Pin a release tag or commit in CI. `ctxfire diff` also lets reviewers see
+Pin a package version in CI. `ctxfire diff` also lets reviewers see
 whether a context-cost increase came from a new file, a removed file, or a size
 change.
 
@@ -210,21 +212,25 @@ python -m build
 The report contract is public API. Schema changes require a new schema version,
 fixture updates, and a changelog entry.
 
-See the [deterministic before/after demo](docs/DEMO.md) for a small, inspectable
+See the [deterministic before/after demo](https://github.com/korovin-aa97/ctxfire/blob/main/docs/DEMO.md)
+for a small, inspectable
 `diff` walkthrough.
 
 Questions about bills, privacy, shared files, rules, symlinks, or prices are
-answered in the [FAQ](docs/FAQ.md).
+answered in the [FAQ](https://github.com/korovin-aa97/ctxfire/blob/main/docs/FAQ.md).
 
 The default package has no runtime dependencies; the optional tokenizer stack
-and its licenses are recorded in the [dependency review](docs/DEPENDENCIES.md).
+and its licenses are recorded in the
+[dependency review](https://github.com/korovin-aa97/ctxfire/blob/main/docs/DEPENDENCIES.md).
 
 ## Project status
 
-`v0.1.0` is an intentionally small first release. It was exercised against 18
+`v0.1.1` is an intentionally small first release. It was exercised against 18
 unrelated public repositories; the dated methodology and results live in
-[`docs/VALIDATION.md`](docs/VALIDATION.md). Contributions are welcome—see
-[`CONTRIBUTING.md`](CONTRIBUTING.md) and the extension guide.
+[`docs/VALIDATION.md`](https://github.com/korovin-aa97/ctxfire/blob/main/docs/VALIDATION.md).
+Contributions are welcome—see
+[`CONTRIBUTING.md`](https://github.com/korovin-aa97/ctxfire/blob/main/CONTRIBUTING.md)
+and the extension guide.
 
 Built from operating a mixed Claude/Codex production fleet. The analyzer is a
 clean, generic extraction: no private fleet configuration or telemetry is

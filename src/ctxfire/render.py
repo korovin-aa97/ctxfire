@@ -9,7 +9,7 @@ from .model import ScanReport
 
 
 def json_text(payload: dict[str, Any]) -> str:
-    return json.dumps(payload, indent=2, sort_keys=True) + "\n"
+    return json.dumps(payload, indent=2, sort_keys=True, allow_nan=False) + "\n"
 
 
 def scan_text(report: ScanReport) -> str:
@@ -108,6 +108,7 @@ def sarif(
     findings: list[dict[str, str]],
     tool_version: str,
     assumptions: dict[str, Any],
+    config_uri: str = "ctxfire.toml",
 ) -> dict[str, Any]:
     rules: dict[str, dict[str, Any]] = {}
     results: list[dict[str, Any]] = []
@@ -126,7 +127,7 @@ def sarif(
                 "locations": [
                     {
                         "physicalLocation": {
-                            "artifactLocation": {"uri": "ctxfire.toml", "uriBaseId": "%SRCROOT%"}
+                            "artifactLocation": {"uri": config_uri, "uriBaseId": "%SRCROOT%"}
                         }
                     }
                 ],

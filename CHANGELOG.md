@@ -3,6 +3,25 @@
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
 this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-08-30
+
+### Fixed
+
+- Prevent exact-path probes from following a symlinked parent directory outside
+  the configured project root.
+- Reject non-finite numeric assumptions, Windows-style escape paths, malformed
+  globs, malformed diff snapshots, and invalid CLI values with exit code 1.
+- Let an authoritative explicit include restore full counting when a Codex
+  instruction-chain cap selected the same file first.
+- Point SARIF findings at the requested config file without exposing absolute
+  workstation paths.
+
+### Changed
+
+- Pin CI actions, validate release tag ancestry/version, add Bandit and format
+  checks, and smoke-test the dependency-free wheel.
+- Make the PyPI quickstart and rendered README links work outside a source clone.
+
 ## [0.1.0] - 2026-08-29
 
 ### Added
@@ -14,4 +33,5 @@ this project uses [Semantic Versioning](https://semver.org/).
 - Explicit token, schedule, conditional-activation, cache, price, and model assumptions.
 - Reproducible fixtures, external-repository validation, packaging, and CI.
 
+[0.1.1]: https://github.com/korovin-aa97/ctxfire/releases/tag/v0.1.1
 [0.1.0]: https://github.com/korovin-aa97/ctxfire/releases/tag/v0.1.0

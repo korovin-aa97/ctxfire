@@ -1,11 +1,11 @@
 # Dependency and license review
 
-Reviewed from the locked release environment on 2026-08-29.
+Reviewed from the locked release environment on 2026-08-30.
 
 The default `ctxfire` installation has **zero runtime dependencies**.
 
 The optional `tokenizers` extra installs tiktoken and its transitive runtime
-dependencies. The versions resolved for the v0.1 release rehearsal were:
+dependencies. The versions resolved for the v0.1.1 release rehearsal were:
 
 | Package | Version | Declared license |
 |---|---:|---|
@@ -24,3 +24,7 @@ which are not installed with the default package or tokenizer extra.
 
 Re-run the metadata/license review whenever the optional dependency range or
 lockfile changes.
+
+The v0.1.1 rehearsal also audited the fully pinned default, tokenizer, and
+development environments with `pip-audit`; no known vulnerabilities were
+reported. GitHub Dependabot likewise reported no open dependency alerts.

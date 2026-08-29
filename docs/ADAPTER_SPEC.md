@@ -1,6 +1,6 @@
 # Adapter specification
 
-Adapter contract version: 1. Updated: 2026-08-29.
+Adapter contract version: 1. Updated: 2026-08-30.
 
 An adapter maps public engine loading rules to context graph edges. The adapter
 name is versioned because engine behavior changes independently of `ctxfire`.
@@ -18,9 +18,11 @@ Each configured agent has:
 
 Each edge has one repository-relative file path, exact current byte size,
 estimated tokens, activation class/rate, reason, and originating pattern. When
-multiple rules select the same path, the strongest activation rate wins. This
-deduplicates a file within one agent while intentionally retaining the cost
-when the same file is loaded by different agents.
+multiple rules select the same path, the strongest activation rate wins; the
+largest counted surface breaks a tie, and an explicit include is authoritative
+when both are otherwise equal. This deduplicates a file within one agent while
+intentionally retaining the cost when the same file is loaded by different
+agents.
 
 Cycles cannot occur in adapter v1 because the graph does not parse Markdown
 imports. Referenced files must be configured explicitly. This conservative
@@ -66,10 +68,10 @@ metadata-only v0.1. Supporting files referenced by a skill are not inferred;
 list them under `conditional` if they affect budgeting.
 
 Primary semantics reference: OpenAI Codex documentation, “Custom instructions
-with AGENTS.md” and “Agent Skills,” checked 2026-08-29:
+with AGENTS.md” and “Agent Skills,” checked 2026-08-30:
 
-- https://developers.openai.com/codex/guides/agents-md
-- https://developers.openai.com/codex/skills
+- https://learn.chatgpt.com/docs/agent-configuration/agents-md
+- https://learn.chatgpt.com/docs/build-skills
 
 Uncertainty: user/global instructions, custom fallback names/max bytes not
 declared in the agent table, platform policy, the skill description catalog,
@@ -97,10 +99,10 @@ available when their subtree is read. In both cases, the full body loads only
 when selected.
 
 Primary semantics references: Anthropic Claude Code documentation, “Manage
-Claude's memory” and “Extend Claude with skills,” checked 2026-08-29:
+Claude's memory” and “Extend Claude with skills,” checked 2026-08-30:
 
-- https://docs.anthropic.com/en/docs/claude-code/memory
-- https://docs.anthropic.com/en/docs/claude-code/skills
+- https://code.claude.com/docs/en/memory
+- https://code.claude.com/docs/en/skills
 
 Uncertainty: imported memory files, stripped HTML comments, auto memory,
 user/enterprise policy, setting-source exclusions, additional directories, and
@@ -117,7 +119,7 @@ git ls-files -z --cached --others --exclude-standard --deduplicate
 
 This combines tracked files with untracked files that standard Git ignore
 sources do not exclude. The behavior is documented by Git's `git-ls-files`
-manual: https://git-scm.com/docs/git-ls-files.html (checked 2026-08-29).
+manual: https://git-scm.com/docs/git-ls-files.html (checked 2026-08-30).
 
 The scanner never follows symlinks. Gitlinks/submodules and missing or other
 non-regular paths are skipped with warnings. Nested repositories are not

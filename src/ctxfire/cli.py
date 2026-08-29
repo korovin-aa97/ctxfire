@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, NoReturn
 
 from . import __version__
 from .config import load_config
@@ -18,6 +19,11 @@ EXIT_ERROR = 1
 EXIT_BUDGET_EXCEEDED = 2
 
 
+class _ArgumentParser(argparse.ArgumentParser):
+    def error(self, message: str) -> NoReturn:
+        raise ValueError(message)
+
+
 def _write(text: str, output: Path | None) -> None:
     if output is None:
         print(text, end="")
@@ -27,6 +33,15 @@ def _write(text: str, output: Path | None) -> None:
 
 def _report(args: argparse.Namespace):  # type: ignore[no-untyped-def]
     return scan(load_config(args.config))
+
+
+def _config_artifact_uri(path: Path) -> str:
+    """Return a useful SARIF URI without exposing an absolute workstation path."""
+
+    if path.is_absolute() or ".." in path.parts:
+        return path.name or "ctxfire.toml"
+    normalized = path.as_posix().removeprefix("./")
+    return normalized or "ctxfire.toml"
 
 
 def command_scan(args: argparse.Namespace) -> int:
@@ -50,7 +65,12 @@ def command_scan(args: argparse.Namespace) -> int:
             for agent in report.agents
         ]
         rendered = json_text(
-            sarif(findings, report.tool["version"], report.as_dict()["assumptions"])
+            sarif(
+                findings,
+                report.tool["version"],
+                report.as_dict()["assumptions"],
+                _config_artifact_uri(args.config),
+            )
         )
     else:
         rendered = scan_text(report)
@@ -84,9 +104,53 @@ def command_explain(args: argparse.Namespace) -> int:
 
 
 def _load_snapshot(path: Path) -> dict[str, Any]:
-    payload = cast(dict[str, Any], json.loads(path.read_text(encoding="utf-8")))
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"not a ctxfire report object: {path}")
     if payload.get("schema_version") != "1.0" or not isinstance(payload.get("agents"), list):
         raise ValueError(f"not a ctxfire report schema 1.0: {path}")
+    names: set[str] = set()
+    for agent in payload["agents"]:
+        if not isinstance(agent, dict):
+            raise ValueError(f"invalid agent entry in ctxfire report: {path}")
+        name = agent.get("name")
+        tokens = agent.get("estimated_tokens_per_day")
+        fires = agent.get("fires_per_day")
+        files = agent.get("files")
+        if not isinstance(name, str) or not name or name in names:
+            raise ValueError(f"invalid or duplicate agent name in ctxfire report: {path}")
+        names.add(name)
+        if not isinstance(tokens, int) or isinstance(tokens, bool) or tokens < 0:
+            raise ValueError(f"invalid daily token estimate for {name} in {path}")
+        if (
+            not isinstance(fires, int | float)
+            or isinstance(fires, bool)
+            or not math.isfinite(fires)
+            or fires < 0
+        ):
+            raise ValueError(f"invalid fires_per_day for {name} in {path}")
+        if not isinstance(files, list):
+            raise ValueError(f"invalid files list for {name} in {path}")
+        file_paths: set[str] = set()
+        for item in files:
+            if not isinstance(item, dict):
+                raise ValueError(f"invalid file entry for {name} in {path}")
+            file_path = item.get("path")
+            if not isinstance(file_path, str) or not file_path or file_path in file_paths:
+                raise ValueError(f"invalid or duplicate file path for {name} in {path}")
+            file_paths.add(file_path)
+            for field in ("exact_bytes", "counted_bytes", "estimated_tokens"):
+                value = item.get(field)
+                if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                    raise ValueError(f"invalid {field} for {name}/{file_path} in {path}")
+            activation_rate = item.get("activation_rate")
+            if (
+                not isinstance(activation_rate, int | float)
+                or isinstance(activation_rate, bool)
+                or not math.isfinite(activation_rate)
+                or not 0 <= activation_rate <= 1
+            ):
+                raise ValueError(f"invalid activation_rate for {name}/{file_path} in {path}")
     return payload
 
 
@@ -177,8 +241,10 @@ def command_check(args: argparse.Namespace) -> int:
         ("--max-tokens-per-day", args.max_tokens_per_day),
         ("--max-usd-per-day", args.max_usd_per_day),
     ):
-        if value is not None and value < 0:
-            raise ValueError(f"{option} cannot be negative")
+        if value is not None and (
+            (isinstance(value, float) and not math.isfinite(value)) or value < 0
+        ):
+            raise ValueError(f"{option} must be finite and non-negative")
     findings: list[dict[str, str]] = []
     checks = [
         (
@@ -223,7 +289,12 @@ def command_check(args: argparse.Namespace) -> int:
             )
     if args.format == "sarif":
         rendered = json_text(
-            sarif(findings, report.tool["version"], report.as_dict()["assumptions"])
+            sarif(
+                findings,
+                report.tool["version"],
+                report.as_dict()["assumptions"],
+                _config_artifact_uri(args.config),
+            )
         )
     elif args.format == "json":
         rendered = json_text(
@@ -257,7 +328,7 @@ def _common(parser: argparse.ArgumentParser, formats: tuple[str, ...]) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = _ArgumentParser(
         prog="ctxfire",
         description="Explain and budget the static context graph of coding agents.",
     )
@@ -292,6 +363,13 @@ def main(argv: list[str] | None = None) -> int:
     try:
         args = build_parser().parse_args(argv)
         return int(args.handler(args))
-    except (OSError, ValueError, json.JSONDecodeError) as error:
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        OverflowError,
+        json.JSONDecodeError,
+    ) as error:
         print(f"ctxfire: error: {error}", file=sys.stderr)
         return EXIT_ERROR

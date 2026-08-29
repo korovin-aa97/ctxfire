@@ -7,7 +7,8 @@ Thank you for helping make agent context costs explainable.
    or security benefit.
 3. Add a regression fixture for every adapter/discovery quirk.
 4. Keep reports metadata-only and repository-relative by default.
-5. Run `ruff check .`, `mypy src`, `pytest`, and `python -m build`.
+5. Run `ruff format --check .`, `ruff check .`, `mypy src`, `pytest`,
+   `bandit -q -r src`, and `python -m build`.
 
 Adapters and report schemas are public APIs. A changed engine behavior needs an
 official source link, an uncertainty note, and either a compatible adapter

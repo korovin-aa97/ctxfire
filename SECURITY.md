@@ -18,8 +18,10 @@ first message. You should receive an acknowledgment within 72 hours.
 
 `ctxfire` scans an untrusted local repository. It never executes repository
 files or configuration commands. It invokes only the local `git` executable
-with a fixed argument list, does not use a shell, does not follow symlinks, and
-does not read or print repository file contents in v0.1.
+with a fixed argument list, does not use a shell, and does not follow symlinks.
+The default estimator reads metadata only. The explicitly enabled tokenizer
+reads matched bytes locally in memory but does not print, retain, or upload
+their content.
 
 Treat third-party repositories as untrusted anyway: run in a normal
 least-privilege account and inspect dependency changes before upgrading.

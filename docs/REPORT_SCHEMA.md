@@ -40,10 +40,13 @@ model/date/cache assumptions—not a subscription bill or measured charge.
 sarif` emits only failed budgets as error-level SARIF 2.1.0 results. GitHub
 supports a subset of SARIF 2.1.0; see
 https://docs.github.com/en/code-security/concepts/code-scanning/sarif-files.
+Each result points at the requested config path when it is repository-relative;
+an absolute config path is reduced to its filename to avoid leaking workstation
+layout.
 
 ## Diff
 
-`diff` accepts two full schema-1.0 scan snapshots. It reports per-agent daily
+`diff` accepts two valid full schema-1.0 scan snapshots. It reports per-agent daily
 token delta and path additions/removals. A size-only change appears in the token
 delta even when the path sets are unchanged. Because snapshots can record
 different assumptions, the text output states that each side uses its own

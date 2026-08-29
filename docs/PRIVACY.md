@@ -12,8 +12,9 @@ It reads:
 - JSON snapshots explicitly supplied to `diff`.
 
 In default mode it does not read context-file contents. In every mode it does
-not follow symlinks, call a model, upload a report, access a vendor API, add
-hooks, or make network requests. The package contains no telemetry identifier.
+not follow symlinks (including a symlinked parent directory), call a model,
+upload a report, access a vendor API, add hooks, or make network requests. The
+package contains no telemetry identifier.
 
 If the user explicitly configures `tiktoken:<encoding>` and installs the
 `tokenizers` extra, matched file bytes are read and tokenized locally in memory.

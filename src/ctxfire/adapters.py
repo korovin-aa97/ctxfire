@@ -50,7 +50,10 @@ def _glob_regex(pattern: str) -> re.Pattern[str]:
         else:
             translated += re.escape(character)
         index += 1
-    return re.compile(f"^{translated}$")
+    try:
+        return re.compile(f"^{translated}$")
+    except re.error as error:
+        raise ValueError(f"invalid glob pattern {pattern!r}: {error}") from error
 
 
 def matches(path: str, pattern: str) -> bool:

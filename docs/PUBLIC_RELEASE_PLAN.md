@@ -1,7 +1,7 @@
 # ctxfire — Public Release Plan
 
-Status: `v0.1.0` is public on GitHub. The optional PyPI trusted publisher is
-not configured; later launch promotion remains intentionally separate.
+Status: `v0.1.1` is public on GitHub and PyPI through an OIDC trusted publisher
+with attestations. Later launch promotion remains intentionally separate.
 
 ## Release thesis
 
@@ -102,17 +102,16 @@ repositories; unexplained files and silent duplicates are release blockers.
 
 Do not execute without an explicit owner instruction.
 
-1. [ ] Configure the PyPI trusted publisher if the owner account permits it.
+1. [x] Configure the PyPI trusted publisher.
 2. [x] Change GitHub visibility to public.
 3. [x] Confirm README, license, demo, description, topics, and clean history.
 4. [x] Enable secret scanning, push protection, vulnerability reporting, and
        code scanning.
 5. [x] Upload the social preview. Profile pinning is an account-wide portfolio
        choice rather than a release blocker.
-6. [x] Tag `v0.1.0` and create human GitHub release notes with checksummed
-       wheel and source artifacts. PyPI remains guarded until OIDC is configured.
-7. [x] Verify public checksums plus clean wheel and source installs. PyPI
-       provenance verification remains coupled to item 1.
+6. [x] Tag public releases and create human GitHub release notes with checksummed
+       wheel and source artifacts.
+7. [x] Verify public checksums, clean wheel/source installs, and PyPI provenance.
 8. [ ] Submit to relevant Python, developer-tool, agent-tool, and static-analysis
        awesome lists. Add a Homebrew recipe only if real demand justifies it.
 

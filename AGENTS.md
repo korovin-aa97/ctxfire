@@ -1,6 +1,6 @@
 # ctxfire — Agent Bootstrap
 
-Last updated: 2026-08-29. Repository status: **v0.1.0 initial public release**.
+Last updated: 2026-08-30. Repository status: **v0.1.1 public patch release**.
 
 Read this file first, followed by `README.md`, `ctxfire.example.toml`, the
 source, and `docs/PUBLIC_RELEASE_PLAN.md`.
@@ -26,13 +26,14 @@ and daily cost are estimates and must always expose their assumptions.
 
 ## Current state
 
-- Version `0.1.0`; renamed from the colliding private draft name before launch.
+- Version `0.1.1`; renamed from the colliding private draft name before launch.
 - Versioned explicit, AGENTS.md, Codex, and Claude Code adapters.
 - Git-index discovery plus narrow exact probes for ignored engine instructions.
 - `scan`, `explain`, `diff`, and `check`; human, JSON 1.0, and SARIF 2.1.0.
 - Dependency-free byte estimates and an opt-in local tiktoken backend.
 - MIT license, community/security docs, CI, release workflow, fixtures, schema,
-  demo, and a dated 18-repository validation report.
+  demo, PyPI trusted publishing with provenance, and a dated 18-repository
+  validation report.
 
 ## Non-negotiable boundaries
 

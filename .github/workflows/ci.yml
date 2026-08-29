@@ -12,16 +12,17 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
           cache: pip
-      - run: python -m pip install --upgrade pip
       - run: python -m pip install -e '.[dev]'
+      - run: ruff format --check .
       - run: ruff check .
       - run: mypy src
       - run: pytest
+      - run: bandit -q -r src
       - run: |
           ctxfire scan --config examples/demo/before.toml --format json --output before.json
           ctxfire scan --config examples/demo/after.toml --format json --output after.json
@@ -37,12 +38,11 @@ jobs:
         python: ["3.11", "3.12", "3.13"]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: ${{ matrix.python }}
           cache: pip
-      - run: python -m pip install --upgrade pip
       - run: python -m pip install '.[tokenizers]'
       - run: python -m unittest discover -s tests -v
       - run: ctxfire --version
@@ -50,15 +50,19 @@ jobs:
   package:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
           cache: pip
-      - run: python -m pip install --upgrade build twine
+      - run: python -m pip install 'build>=1.2,<2' 'twine>=6,<7'
       - run: python -m build
       - run: python -m twine check dist/*
-      - uses: actions/upload-artifact@v7
+      - run: |
+          python -m venv wheel-smoke
+          wheel-smoke/bin/python -m pip install --no-deps dist/*.whl
+          wheel-smoke/bin/ctxfire --version
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: distributions
           path: dist/

@@ -5,6 +5,7 @@ from __future__ import annotations
 import tomllib
 from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
+from math import isfinite
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -40,6 +41,8 @@ def _patterns(raw: dict[str, Any], key: str) -> tuple[str, ...]:
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
         raise ValueError(f"{key} must be an array of strings")
     for pattern in value:
+        if not pattern or "\\" in pattern:
+            raise ValueError(f"{key} patterns must be non-empty POSIX paths: {pattern!r}")
         pure = PurePosixPath(pattern)
         if pure.is_absolute() or ".." in pure.parts:
             raise ValueError(f"{key} pattern must stay inside project root: {pattern}")
@@ -64,14 +67,14 @@ def load_config(path: Path) -> Config:
 
     bytes_per_token = float(project.get("bytes_per_token", 4.0))
     conditional_rate = float(project.get("conditional_activation_rate", 0.0))
-    if bytes_per_token <= 0:
-        raise ValueError("bytes_per_token must be greater than zero")
-    if not 0 <= conditional_rate <= 1:
-        raise ValueError("conditional_activation_rate must be between 0 and 1")
+    if not isfinite(bytes_per_token) or bytes_per_token <= 0:
+        raise ValueError("bytes_per_token must be finite and greater than zero")
+    if not isfinite(conditional_rate) or not 0 <= conditional_rate <= 1:
+        raise ValueError("conditional_activation_rate must be finite and between 0 and 1")
     price_raw = project.get("usd_per_million_input_tokens")
     price = None if price_raw is None else float(price_raw)
-    if price is not None and price < 0:
-        raise ValueError("usd_per_million_input_tokens cannot be negative")
+    if price is not None and (not isfinite(price) or price < 0):
+        raise ValueError("usd_per_million_input_tokens must be finite and non-negative")
     tokenizer = str(project.get("tokenizer", "byte-estimate"))
     if tokenizer == "byte-estimate":
         tokenizer_version = "approximation-v1"
@@ -106,9 +109,11 @@ def load_config(path: Path) -> Config:
             raise ValueError(f"duplicate agent name: {name}")
         names.add(name)
         fires = float(raw.get("fires_per_day", 1.0))
-        if fires < 0:
-            raise ValueError(f"fires_per_day cannot be negative for {name}")
+        if not isfinite(fires) or fires < 0:
+            raise ValueError(f"fires_per_day must be finite and non-negative for {name}")
         working_directory = str(raw.get("working_directory", ".")).strip("/") or "."
+        if "\\" in working_directory:
+            raise ValueError(f"working_directory must use POSIX separators for {name}")
         work_path = PurePosixPath(working_directory)
         if work_path.is_absolute() or ".." in work_path.parts:
             raise ValueError(f"working_directory must stay inside project root: {name}")
@@ -119,7 +124,11 @@ def load_config(path: Path) -> Config:
         if any("/" in item or "\\" in item for item in fallback_names):
             raise ValueError(f"instruction fallback names must be filenames for {name}")
         max_bytes_raw = raw.get("instruction_max_bytes", 32768 if adapter == "codex@1" else None)
-        instruction_max_bytes = None if max_bytes_raw is None else int(max_bytes_raw)
+        if max_bytes_raw is not None and (
+            not isinstance(max_bytes_raw, int) or isinstance(max_bytes_raw, bool)
+        ):
+            raise ValueError(f"instruction_max_bytes must be an integer for {name}")
+        instruction_max_bytes = max_bytes_raw
         if instruction_max_bytes is not None and instruction_max_bytes <= 0:
             raise ValueError(f"instruction_max_bytes must be positive for {name}")
         claude_rules_activation = str(raw.get("claude_rules_activation", "always"))

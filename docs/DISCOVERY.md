@@ -30,7 +30,8 @@ full `.gitignore` emulation. For reproducible CI results, use a Git top-level.
 
 ## Boundaries
 
-- Symlinks: skipped and warned; targets are never opened.
+- Symlinks: skipped and warned, including paths below a symlinked directory;
+  targets are never opened.
 - Submodules/gitlinks: skipped and warned; scan them as separate roots.
 - Nested repositories/worktrees: not recursively crossed by the outer root.
 - Missing tracked path: skipped and warned.
@@ -38,6 +39,7 @@ full `.gitignore` emulation. For reproducible CI results, use a Git top-level.
   them; `ctxfire` does not guess whether tracked content is valuable.
 - Ignored rule/skill trees: not globbed. Track shared engine configuration or
   add exact entry points; known exact instruction-chain files are probed.
-- Explicit patterns: must be relative and cannot contain `..`.
+- Explicit patterns: must be non-empty relative POSIX paths, cannot contain
+  backslashes, and cannot contain `..`.
 
 These boundaries favor explainability and local safety over maximal discovery.

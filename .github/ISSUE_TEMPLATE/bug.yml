@@ -9,7 +9,7 @@ body:
     id: version
     attributes:
       label: ctxfire version
-      placeholder: ctxfire 0.1.0
+      placeholder: ctxfire 0.1.1
     validations:
       required: true
   - type: textarea

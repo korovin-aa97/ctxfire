@@ -10,7 +10,7 @@ from typing import Any
 from . import __version__
 from .adapters import exact_probe_paths, excluded, inclusions, matches
 from .config import Config
-from .discovery import inventory
+from .discovery import inventory, path_kind
 from .model import REPORT_SCHEMA_VERSION, AgentReport, ContextFile, ScanReport
 
 
@@ -32,7 +32,7 @@ def _tokenize_file(path: Path, counted_bytes: int, tokenizer: str) -> int:
 
 
 def scan(config: Config) -> ScanReport:
-    """Scan only file metadata and return a deterministic report."""
+    """Build a deterministic report, reading content only for an opt-in tokenizer."""
 
     found = inventory(config.root)
     warnings = [f"skipped symlink: {path}" for path in found.skipped_symlinks]
@@ -52,10 +52,10 @@ def scan(config: Config) -> ScanReport:
         selected: dict[str, ContextFile] = {}
         agent_paths = set(found.paths)
         for path in exact_probe_paths(agent):
-            candidate = config.root / path
-            if candidate.is_symlink():
+            kind = path_kind(config.root, path)
+            if kind == "symlink":
                 warnings.append(f"skipped symlink: {path}")
-            elif candidate.is_file():
+            elif kind == "file":
                 if path not in agent_paths:
                     out_of_git_probes.add(path)
                     warnings.append(
@@ -120,13 +120,27 @@ def scan(config: Config) -> ScanReport:
                     pattern=rule.pattern,
                 )
                 previous = selected.get(path)
-                if previous is None or fact.activation_rate > previous.activation_rate:
+                if previous is None or (
+                    fact.activation_rate,
+                    fact.counted_bytes,
+                    fact.reason == "explicit include",
+                ) > (
+                    previous.activation_rate,
+                    previous.counted_bytes,
+                    previous.reason == "explicit include",
+                ):
                     selected[path] = fact
         files = tuple(selected[path] for path in sorted(selected))
         tokens_fire = math.ceil(sum(item.estimated_tokens * item.activation_rate for item in files))
-        tokens_day = math.ceil(tokens_fire * agent.fires_per_day)
+        daily_estimate = tokens_fire * agent.fires_per_day
+        if not math.isfinite(daily_estimate):
+            raise ValueError(f"computed daily token estimate is not finite for {agent.name}")
+        tokens_day = math.ceil(daily_estimate)
         price = config.assumptions.usd_per_million_input_tokens
-        usd_day = None if price is None else round(tokens_day * price / 1_000_000, 6)
+        cost_estimate = None if price is None else tokens_day * price / 1_000_000
+        if cost_estimate is not None and not math.isfinite(cost_estimate):
+            raise ValueError(f"computed daily cost estimate is not finite for {agent.name}")
+        usd_day = None if cost_estimate is None else round(cost_estimate, 6)
         reports.append(
             AgentReport(
                 name=agent.name,
@@ -144,12 +158,15 @@ def scan(config: Config) -> ScanReport:
     total_usd_values = [
         item.estimated_usd_per_day for item in reports if item.estimated_usd_per_day is not None
     ]
+    total_usd = None if not total_usd_values else sum(total_usd_values)
+    if total_usd is not None and not math.isfinite(total_usd):
+        raise ValueError("computed total daily cost estimate is not finite")
     totals: dict[str, int | float | None] = {
         "exact_candidate_bytes_across_agents_per_fire": sum(
             item.exact_candidate_bytes_per_fire for item in reports
         ),
         "estimated_tokens_per_day": sum(item.estimated_tokens_per_day for item in reports),
-        "estimated_usd_per_day": None if not total_usd_values else round(sum(total_usd_values), 6),
+        "estimated_usd_per_day": None if total_usd is None else round(total_usd, 6),
     }
     return ScanReport(
         schema_version=REPORT_SCHEMA_VERSION,
