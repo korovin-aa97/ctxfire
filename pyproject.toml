@@ -3,11 +3,68 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "ctxcost"
-version = "0.0.1"
-description = "Draft static cost analyzer for multi-agent context graphs"
-requires-python = ">=3.12"
+name = "ctxfire"
+version = "0.1.0"
+description = "Explain and budget static context graphs for coding agents"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
 dependencies = []
+authors = [{ name = "Alexander Korovin" }]
+keywords = ["ai-agents", "context-window", "codex", "claude-code", "static-analysis"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Quality Assurance",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/korovin-aa97/ctxfire"
+Documentation = "https://github.com/korovin-aa97/ctxfire#readme"
+Issues = "https://github.com/korovin-aa97/ctxfire/issues"
+Changelog = "https://github.com/korovin-aa97/ctxfire/blob/main/CHANGELOG.md"
 
 [project.scripts]
-ctxcost = "ctxcost.cli:main"
+ctxfire = "ctxfire.cli:main"
+
+[project.optional-dependencies]
+tokenizers = ["tiktoken>=0.7,<1"]
+dev = [
+  "build>=1.2,<2",
+  "jsonschema>=4.23,<5",
+  "mypy>=1.11,<2",
+  "pytest>=8,<9",
+  "ruff>=0.6,<1",
+  "tiktoken>=0.7,<1",
+  "twine>=6,<7",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ctxfire"]
+core-metadata-version = "2.4"
+
+[tool.hatch.build.targets.sdist]
+core-metadata-version = "2.4"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["src"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

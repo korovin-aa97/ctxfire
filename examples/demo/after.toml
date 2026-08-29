@@ -1,0 +1,16 @@
+schema_version = "1"
+
+[project]
+name = "ctxfire-demo-after"
+root = "."
+bytes_per_token = 4.0
+tokenizer = "byte-estimate"
+model = "unspecified"
+price_date = "unspecified"
+cache_assumption = "no-cache-credit"
+conditional_activation_rate = 0.25
+
+[[agents]]
+name = "implementer"
+adapter = "codex@1"
+fires_per_day = 12

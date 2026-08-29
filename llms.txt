@@ -1,0 +1,18 @@
+# ctxfire
+
+> Local, telemetry-free static analyzer for multi-agent context graphs.
+
+## Start here
+
+- README.md: product contract and quickstart
+- docs/ADAPTER_SPEC.md: versioned loading semantics
+- docs/REPORT_SCHEMA.md: machine-readable output contract
+- docs/PRIVACY.md: data and threat model
+- docs/EXTENDING.md: how to add adapters or estimators
+
+## Important boundaries
+
+- File sizes are exact; tokens and costs are estimates.
+- Reports are not measured usage or vendor bills.
+- v0.1 reads metadata only and never follows symlinks.
+- Adapter and report schema changes are public API changes.

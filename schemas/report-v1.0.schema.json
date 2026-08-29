@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/korovin-aa97/ctxfire/main/schemas/report-v1.0.schema.json",
+  "title": "ctxfire scan report 1.0",
+  "type": "object",
+  "required": ["schema_version", "tool", "project", "discovery", "assumptions", "agents", "totals", "warnings"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "tool": {"$ref": "#/$defs/tool"},
+    "project": {"$ref": "#/$defs/project"},
+    "discovery": {"$ref": "#/$defs/discovery"},
+    "assumptions": {"$ref": "#/$defs/assumptions"},
+    "agents": {"type": "array", "items": {"$ref": "#/$defs/agent"}},
+    "totals": {"$ref": "#/$defs/totals"},
+    "warnings": {"type": "array", "items": {"type": "string"}}
+  },
+  "$defs": {
+    "tool": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {"name": {"const": "ctxfire"}, "version": {"type": "string"}},
+      "additionalProperties": false
+    },
+    "project": {
+      "type": "object",
+      "required": ["name", "root"],
+      "properties": {"name": {"type": "string"}, "root": {"const": "."}},
+      "additionalProperties": false
+    },
+    "discovery": {
+      "type": "object",
+      "required": ["method", "eligible_regular_files", "exact_probe_files_outside_git_discovery", "content_access", "symlink_policy", "submodule_policy"],
+      "properties": {
+        "method": {"enum": ["git-index+untracked-nonignored", "filesystem-fallback"]},
+        "eligible_regular_files": {"type": "integer", "minimum": 0},
+        "exact_probe_files_outside_git_discovery": {"type": "integer", "minimum": 0},
+        "content_access": {"enum": ["metadata-only", "matched-file-content-local"]},
+        "symlink_policy": {"const": "skip-with-warning"},
+        "submodule_policy": {"const": "skip-gitlink-with-warning"}
+      },
+      "additionalProperties": false
+    },
+    "assumptions": {
+      "type": "object",
+      "required": ["tokenizer", "tokenizer_version", "bytes_per_token", "model", "price_date", "usd_per_million_input_tokens", "cache_assumption", "conditional_activation_rate"],
+      "properties": {
+        "tokenizer": {"type": "string"},
+        "tokenizer_version": {"type": "string"},
+        "bytes_per_token": {"type": "number", "exclusiveMinimum": 0},
+        "model": {"type": "string"},
+        "price_date": {"type": "string"},
+        "usd_per_million_input_tokens": {"type": ["number", "null"], "minimum": 0},
+        "cache_assumption": {"type": "string"},
+        "conditional_activation_rate": {"type": "number", "minimum": 0, "maximum": 1}
+      },
+      "additionalProperties": false
+    },
+    "context_file": {
+      "type": "object",
+      "required": ["path", "exact_bytes", "counted_bytes", "estimated_tokens", "activation", "activation_rate", "reason", "pattern"],
+      "properties": {
+        "path": {"type": "string"},
+        "exact_bytes": {"type": "integer", "minimum": 0},
+        "counted_bytes": {"type": "integer", "minimum": 0},
+        "estimated_tokens": {"type": "integer", "minimum": 0},
+        "activation": {"enum": ["always", "conditional"]},
+        "activation_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "reason": {"type": "string"},
+        "pattern": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "agent": {
+      "type": "object",
+      "required": ["name", "adapter", "engine", "working_directory", "fires_per_day", "files", "exact_candidate_bytes_per_fire", "estimated_tokens_per_fire", "estimated_tokens_per_day", "estimated_usd_per_day"],
+      "properties": {
+        "name": {"type": "string"},
+        "adapter": {"type": "string"},
+        "engine": {"type": "string"},
+        "working_directory": {"type": "string"},
+        "fires_per_day": {"type": "number", "minimum": 0},
+        "files": {"type": "array", "items": {"$ref": "#/$defs/context_file"}},
+        "exact_candidate_bytes_per_fire": {"type": "integer", "minimum": 0},
+        "estimated_tokens_per_fire": {"type": "integer", "minimum": 0},
+        "estimated_tokens_per_day": {"type": "integer", "minimum": 0},
+        "estimated_usd_per_day": {"type": ["number", "null"], "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "totals": {
+      "type": "object",
+      "required": ["exact_candidate_bytes_across_agents_per_fire", "estimated_tokens_per_day", "estimated_usd_per_day"],
+      "properties": {
+        "exact_candidate_bytes_across_agents_per_fire": {"type": "integer", "minimum": 0},
+        "estimated_tokens_per_day": {"type": "integer", "minimum": 0},
+        "estimated_usd_per_day": {"type": ["number", "null"], "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

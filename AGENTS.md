@@ -1,14 +1,15 @@
-# ctxcost — Agent Bootstrap
+# ctxfire — Agent Bootstrap
 
-Last updated: 2026-08-29. Repository status: **private extraction draft**.
+Last updated: 2026-08-29. Repository status: **v0.1.0 initial public release**.
 
-Read this file first, followed by `README.md`, `ctxcost.example.toml`, the
+Read this file first, followed by `README.md`, `ctxfire.example.toml`, the
 source, and `docs/PUBLIC_RELEASE_PLAN.md`.
 
 ## Product in one sentence
 
-`ctxcost` shows what context each coding agent actually loads, how often it is
-loaded, and the estimated token and API-equivalent cost per fire and per day.
+`ctxfire` maps the context each versioned adapter attributes to a coding agent,
+how often that agent fires, and the estimated token and API-equivalent cost per
+fire and per day.
 
 ## Positioning
 
@@ -25,12 +26,13 @@ and daily cost are estimates and must always expose their assumptions.
 
 ## Current state
 
-- Version `0.0.1`; private and unpublished.
-- The CLI reads explicit agent definitions from TOML and reports exact bytes,
-  estimated tokens per fire, and estimated tokens per day.
-- Discovery currently uses simple filesystem globs.
-- There is no engine adapter specification, git-aware discovery, tokenizer
-  integration, SARIF, tests, public license, or release pipeline.
+- Version `0.1.0`; renamed from the colliding private draft name before launch.
+- Versioned explicit, AGENTS.md, Codex, and Claude Code adapters.
+- Git-index discovery plus narrow exact probes for ignored engine instructions.
+- `scan`, `explain`, `diff`, and `check`; human, JSON 1.0, and SARIF 2.1.0.
+- Dependency-free byte estimates and an opt-in local tiktoken backend.
+- MIT license, community/security docs, CI, release workflow, fixtures, schema,
+  demo, and a dated 18-repository validation report.
 
 ## Non-negotiable boundaries
 
@@ -48,15 +50,10 @@ and daily cost are estimates and must always expose their assumptions.
 
 ## Next work, in order
 
-1. Write an adapter specification for AGENTS.md, Claude Code, Codex, and Skills.
-2. Replace raw glob discovery with git-index, `.gitignore`, worktree, symlink,
-   generated-file, and explicit-root handling.
-3. Add `scan`, `explain`, `diff`, and `check` reports with JSON and SARIF.
-4. Add configurable tokenizers and dated price tables while preserving a
-   dependency-free approximate mode.
-5. Build fixture repositories and validate against 10–20 unrelated real repos.
-6. Package for clean CLI installation and prepare the public release assets.
-7. Complete `docs/PUBLIC_RELEASE_PLAN.md`; publish only with explicit approval.
+1. Keep adapter semantics aligned with their dated official sources.
+2. Preserve report schema 1.0 compatibility through the 0.1 line.
+3. Triage real user reports before expanding engine or tokenizer scope.
+4. Treat runtime measurement, package management, and scheduling as out of scope.
 
 ## v0.1 definition of done
 
@@ -74,14 +71,14 @@ and daily cost are estimates and must always expose their assumptions.
 
 ## Working rules for future agents
 
-- Use Python 3.12+ and type all public interfaces.
+- Use Python 3.11+ and type all public interfaces.
 - Treat adapter semantics and report schemas as public APIs.
 - Add a regression fixture for every loading rule or parser quirk.
 - Avoid reading file contents when metadata is enough; never print sensitive
   contents in default reports.
 - No hidden network calls or telemetry.
 - Date and source every price or competitor claim.
-- Before launch, repeat direct checks of GitHub, PyPI/npm, and competitor sites;
+- Before each release, repeat direct checks of GitHub, PyPI/npm, and competitor sites;
   young tools and bot-blocked sites are easy to miss in search indexes.
 
 ## Success criterion

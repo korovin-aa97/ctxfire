@@ -1,0 +1,31 @@
+schema_version = "1"
+
+[project]
+name = "example-agent-team"
+root = "."
+bytes_per_token = 4.0
+tokenizer = "byte-estimate"
+model = "unspecified"
+price_date = "unspecified"
+cache_assumption = "no-cache-credit"
+conditional_activation_rate = 0.25
+
+[[agents]]
+name = "reviewer"
+adapter = "claude-code@1"
+fires_per_day = 8
+include = [
+  "AGENTS.md",
+  ".claude/agents/reviewer.md"
+]
+conditional = [".claude/skills/regression-review/**/*.md"]
+
+[[agents]]
+name = "implementer"
+adapter = "codex@1"
+fires_per_day = 8
+instruction_max_bytes = 32768
+include = [
+  ".codex/agents/implementer.toml"
+]
+conditional = [".agents/skills/**/references/**/*.md"]

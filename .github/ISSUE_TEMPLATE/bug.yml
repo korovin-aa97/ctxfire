@@ -1,0 +1,34 @@
+name: Bug report
+description: Report a reproducible scanner, adapter, or output problem
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not paste private repository paths or content. Redact reports first.
+  - type: input
+    id: version
+    attributes:
+      label: ctxfire version
+      placeholder: ctxfire 0.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include a small public fixture or synthetic file tree and config.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected versus actual behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [Linux, macOS, Windows, Other]
+    validations:
+      required: true
