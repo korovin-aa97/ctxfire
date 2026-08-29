@@ -24,4 +24,9 @@ ctxcost scan --config ctxcost.toml
 Before a public release this must be validated against 10–20 unrelated
 repositories and the loading semantics of each supported agent engine.
 
+## Agent handoff
+
+Start a future implementation or publication session with [AGENTS.md](AGENTS.md),
+then follow [the public release plan](docs/PUBLIC_RELEASE_PLAN.md).
+
 No public license has been selected while this repository is private.
