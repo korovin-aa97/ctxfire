@@ -43,7 +43,7 @@ dev = [
   "pytest>=9.0.3,<10",
   "ruff>=0.6,<1",
   "tiktoken>=0.7,<1",
-  "twine>=6,<7",
+  "twine>=6,<8",
 ]
 
 [tool.hatch.build.targets.wheel]
