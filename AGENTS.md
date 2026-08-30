@@ -1,6 +1,6 @@
 # ctxfire — Agent Bootstrap
 
-Last updated: 2026-08-30. Repository status: **v0.1.2 public patch release**.
+Last updated: 2026-08-30. Repository status: **v0.1.3 public patch release**.
 
 Read this file first, followed by `README.md`, `ctxfire.example.toml`, the
 source, and `docs/PUBLIC_RELEASE_PLAN.md`.
@@ -26,7 +26,7 @@ and daily cost are estimates and must always expose their assumptions.
 
 ## Current state
 
-- Version `0.1.2`; a distribution-only patch over the public 0.1.1 runtime.
+- Version `0.1.3`; a distribution-only patch over the public 0.1.1 runtime.
 - Versioned explicit, AGENTS.md, Codex, and Claude Code adapters.
 - Git-index discovery plus narrow exact probes for ignored engine instructions.
 - `scan`, `explain`, `diff`, and `check`; human, JSON 1.0, and SARIF 2.1.0.

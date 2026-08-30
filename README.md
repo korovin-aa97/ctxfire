@@ -42,17 +42,17 @@ The runtime requires Python 3.11+ and Git. Install the published package with
 `pipx` (recommended) or another Python package manager:
 
 ```bash
-pipx install 'ctxfire==0.1.2'
+pipx install 'ctxfire==0.1.3'
 ctxfire --version
 curl -fsSLo ctxfire.toml \
-  https://raw.githubusercontent.com/korovin-aa97/ctxfire/v0.1.2/ctxfire.example.toml
+  https://raw.githubusercontent.com/korovin-aa97/ctxfire/v0.1.3/ctxfire.example.toml
 ctxfire scan
 ```
 
 Or run without a persistent install:
 
 ```bash
-uvx --from 'ctxfire==0.1.2' ctxfire scan --config ctxfire.toml
+uvx --from 'ctxfire==0.1.3' ctxfire scan --config ctxfire.toml
 ```
 
 Start from [`ctxfire.example.toml`](https://github.com/korovin-aa97/ctxfire/blob/main/ctxfire.example.toml):
@@ -173,7 +173,7 @@ and [`docs/DISCOVERY.md`](https://github.com/korovin-aa97/ctxfire/blob/main/docs
 ```yaml
 - name: Enforce agent context budget
   run: |
-    pipx install 'ctxfire==0.1.2'
+    pipx install 'ctxfire==0.1.3'
     ctxfire check --max-tokens-per-day 75000 \
       --format sarif --output ctxfire.sarif
 ```
@@ -225,7 +225,7 @@ and its licenses are recorded in the
 
 ## Project status
 
-`v0.1.2` is a distribution-only patch over the intentionally small first
+`v0.1.3` is a distribution-only patch over the intentionally small first
 release. The analyzer was exercised against 18 unrelated public repositories;
 the dated methodology and results live in
 [`docs/VALIDATION.md`](https://github.com/korovin-aa97/ctxfire/blob/main/docs/VALIDATION.md).

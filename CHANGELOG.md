@@ -3,6 +3,17 @@
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
 this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.3] - 2026-08-30
+
+### Fixed
+
+- Publish the exact checksummed immutable GitHub Release wheel and source
+  archive to PyPI instead of rebuilding them in a second environment.
+- Verify release immutability, tag/version/SHA ancestry, PyPI digests, OIDC
+  provenance, and clean wheel/source installs in the release workflow.
+
+There are no runtime or report-schema changes from 0.1.2.
+
 ## [0.1.2] - 2026-08-30
 
 ### Changed
@@ -10,7 +21,9 @@ this project uses [Semantic Versioning](https://semver.org/).
 - Publish distribution artifacts under GitHub's immutable-releases policy.
 - Refresh installation examples and release metadata for version 0.1.2.
 
-There are no runtime or report-schema changes from 0.1.1.
+There are no runtime or report-schema changes from 0.1.1. This release is
+superseded by 0.1.3 because its independently rebuilt PyPI files did not
+byte-match the immutable GitHub Release files.
 
 ## [0.1.1] - 2026-08-30
 
@@ -42,6 +55,7 @@ There are no runtime or report-schema changes from 0.1.1.
 - Explicit token, schedule, conditional-activation, cache, price, and model assumptions.
 - Reproducible fixtures, external-repository validation, packaging, and CI.
 
+[0.1.3]: https://github.com/korovin-aa97/ctxfire/releases/tag/v0.1.3
 [0.1.2]: https://github.com/korovin-aa97/ctxfire/releases/tag/v0.1.2
 [0.1.1]: https://github.com/korovin-aa97/ctxfire/releases/tag/v0.1.1
 [0.1.0]: https://github.com/korovin-aa97/ctxfire/releases/tag/v0.1.0
