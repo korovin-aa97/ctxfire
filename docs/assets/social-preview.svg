@@ -23,19 +23,19 @@
   <g filter="url(#shadow)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22">
     <rect x="76" y="370" width="212" height="92" rx="18" fill="#241d22" stroke="#9b5b48"/>
     <text x="182" y="425" text-anchor="middle" fill="#fff3ed">agent</text>
-    <path d="M288 416 H352" stroke="#ff9566" stroke-width="4"/>
-    <path d="M342 405 L356 416 L342 427" fill="none" stroke="#ff9566" stroke-width="4"/>
+    <path d="M288 416 H352" fill="none" stroke="#ff9566" stroke-width="4" stroke-linecap="round"/>
+    <path d="M342 405 L356 416 L342 427" fill="none" stroke="#ff9566" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 
     <rect x="356" y="370" width="212" height="92" rx="18" fill="#241d22" stroke="#9b5b48"/>
     <text x="462" y="425" text-anchor="middle" fill="#fff3ed">adapter@1</text>
-    <path d="M568 416 H632" stroke="#ff9566" stroke-width="4"/>
-    <path d="M622 405 L636 416 L622 427" fill="none" stroke="#ff9566" stroke-width="4"/>
+    <path d="M568 416 H632" fill="none" stroke="#ff9566" stroke-width="4" stroke-linecap="round"/>
+    <path d="M622 405 L636 416 L622 427" fill="none" stroke="#ff9566" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 
     <rect x="636" y="370" width="212" height="92" rx="18" fill="#241d22" stroke="#9b5b48"/>
     <text x="742" y="410" text-anchor="middle" fill="#fff3ed">context</text>
     <text x="742" y="442" text-anchor="middle" fill="#c6aaa0" font-size="18">exact bytes</text>
-    <path d="M848 416 H912" stroke="#ff9566" stroke-width="4"/>
-    <path d="M902 405 L916 416 L902 427" fill="none" stroke="#ff9566" stroke-width="4"/>
+    <path d="M848 416 H912" fill="none" stroke="#ff9566" stroke-width="4" stroke-linecap="round"/>
+    <path d="M902 405 L916 416 L902 427" fill="none" stroke="#ff9566" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
 
     <rect x="916" y="350" width="286" height="132" rx="18" fill="#30201f" stroke="#ff8b61" stroke-width="2"/>
     <text x="1059" y="403" text-anchor="middle" fill="#fff8f4" font-size="21">68,280 tokens/day</text>
