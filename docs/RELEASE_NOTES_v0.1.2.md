@@ -4,6 +4,11 @@ This distribution-only patch republishes the 0.1.1 runtime under GitHub's
 immutable-releases policy. It does not change scanner behavior, adapter
 semantics, report schemas, dependencies, privacy boundaries, or telemetry.
 
+> **Superseded by v0.1.3:** the v0.1.2 PyPI workflow rebuilt the distributions
+> independently, so their bytes did not match the immutable GitHub Release
+> assets. Both sets came from the same source SHA and the runtime is unchanged;
+> v0.1.3 publishes one exact verified set to both registries.
+
 ## Distribution changes
 
 - Version package and installation metadata as 0.1.2.

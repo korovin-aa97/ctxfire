@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -18,8 +18,9 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
           python-version: "3.12"
-      - name: Verify release tag and ancestry
+      - name: Verify immutable release, tag, version, and ancestry
         env:
+          GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
           python - <<'PY'
@@ -33,18 +34,98 @@ jobs:
           if actual != expected:
               raise SystemExit(f"release tag {actual!r} does not match package {expected!r}")
           PY
+          test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$(git rev-parse HEAD)"
           git merge-base --is-ancestor HEAD refs/remotes/origin/main
-      - run: python -m pip install 'build>=1.2,<2' 'twine>=6,<7'
-      - run: python -m build
-      - run: python -m twine check dist/*
+
+          release_json="$(gh release view "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --json isDraft,isImmutable,tagName,targetCommitish,assets)"
+          RELEASE_JSON="$release_json" python - <<'PY'
+          import json
+          import os
+
+          release = json.loads(os.environ["RELEASE_JSON"])
+          version = os.environ["RELEASE_TAG"].removeprefix("v")
+          expected_assets = {
+              f"ctxfire-{version}-py3-none-any.whl",
+              f"ctxfire-{version}.tar.gz",
+              "SHA256SUMS",
+          }
+          actual_assets = {asset["name"] for asset in release["assets"]}
+          if release["isDraft"] or not release["isImmutable"]:
+              raise SystemExit("release must be published and immutable before PyPI upload")
+          if release["tagName"] != os.environ["RELEASE_TAG"]:
+              raise SystemExit("release tag metadata does not match the event tag")
+          if release["targetCommitish"] != os.environ["GITHUB_SHA"]:
+              raise SystemExit("release target does not match the checked-out commit")
+          if actual_assets != expected_assets:
+              raise SystemExit(
+                  f"release assets differ: expected {sorted(expected_assets)}, "
+                  f"got {sorted(actual_assets)}"
+              )
+          PY
+      - name: Download immutable release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          mkdir release-assets
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'ctxfire-*.whl' \
+            --pattern 'ctxfire-*.tar.gz' \
+            --pattern SHA256SUMS \
+            --dir release-assets
+      - name: Verify release asset names and digests
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+
+          root = Path("release-assets")
+          version = os.environ["RELEASE_TAG"].removeprefix("v")
+          distributions = {
+              f"ctxfire-{version}-py3-none-any.whl",
+              f"ctxfire-{version}.tar.gz",
+          }
+          expected_files = distributions | {"SHA256SUMS"}
+          actual_files = {path.name for path in root.iterdir() if path.is_file()}
+          if actual_files != expected_files:
+              raise SystemExit(
+                  f"downloaded assets differ: expected {sorted(expected_files)}, "
+                  f"got {sorted(actual_files)}"
+              )
+
+          manifest: dict[str, str] = {}
+          for line in (root / "SHA256SUMS").read_text(encoding="utf-8").splitlines():
+              digest, marker, filename = line.partition("  ")
+              if marker != "  " or filename in manifest:
+                  raise SystemExit(f"invalid SHA256SUMS line: {line!r}")
+              manifest[filename] = digest
+          if set(manifest) != distributions:
+              raise SystemExit("SHA256SUMS must name exactly the wheel and source archive")
+          for filename, expected in manifest.items():
+              actual = hashlib.sha256((root / filename).read_bytes()).hexdigest()
+              if actual != expected:
+                  raise SystemExit(f"digest mismatch for {filename}: {actual} != {expected}")
+          PY
+      - run: python -m pip install 'twine>=6,<7'
+      - run: python -m twine check release-assets/*.whl release-assets/*.tar.gz
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: pypi-distributions
-          path: dist/
+          name: verified-distributions
+          path: |
+            release-assets/*.whl
+            release-assets/*.tar.gz
+          if-no-files-found: error
+          retention-days: 1
 
   publish:
     if: ${{ vars.PYPI_PUBLISH == 'true' }}
-    needs: build
+    needs: verify
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -54,8 +135,118 @@ jobs:
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: pypi-distributions
+          name: verified-distributions
           path: dist/
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
         with:
           attestations: true
+
+  verify-pypi:
+    if: ${{ vars.PYPI_PUBLISH == 'true' }}
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: verified-distributions
+          path: dist/
+      - name: Verify PyPI digests and OIDC provenance
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          python - <<'PY'
+          import base64
+          import hashlib
+          import json
+          import os
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          from pathlib import Path
+
+          version = os.environ["RELEASE_TAG"].removeprefix("v")
+          dist = Path("dist")
+          expected = {
+              path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+              for path in dist.iterdir()
+              if path.is_file()
+          }
+          expected_names = {
+              f"ctxfire-{version}-py3-none-any.whl",
+              f"ctxfire-{version}.tar.gz",
+          }
+          if set(expected) != expected_names:
+              raise SystemExit(
+                  f"verified distributions differ: expected {sorted(expected_names)}, "
+                  f"got {sorted(expected)}"
+              )
+
+          error = "PyPI metadata was not available"
+          for attempt in range(20):
+              try:
+                  with urllib.request.urlopen(
+                      f"https://pypi.org/pypi/ctxfire/{version}/json", timeout=15
+                  ) as response:
+                      metadata = json.load(response)
+                  published = {
+                      item["filename"]: item["digests"]["sha256"]
+                      for item in metadata["urls"]
+                  }
+                  if published != expected:
+                      raise RuntimeError(
+                          f"PyPI digests differ: expected {expected}, got {published}"
+                      )
+
+                  for filename, digest in expected.items():
+                      quoted = urllib.parse.quote(filename)
+                      with urllib.request.urlopen(
+                          f"https://pypi.org/integrity/ctxfire/{version}/{quoted}/provenance",
+                          timeout=15,
+                      ) as response:
+                          provenance = json.load(response)
+                      bundles = provenance["attestation_bundles"]
+                      if len(bundles) != 1:
+                          raise RuntimeError(f"unexpected provenance bundle count for {filename}")
+                      bundle = bundles[0]
+                      publisher = bundle["publisher"]
+                      if publisher != {
+                          "environment": "pypi",
+                          "kind": "GitHub",
+                          "repository": os.environ["GITHUB_REPOSITORY"],
+                          "workflow": "publish-pypi.yml",
+                      }:
+                          raise RuntimeError(f"unexpected publisher for {filename}: {publisher}")
+                      attestations = bundle["attestations"]
+                      if len(attestations) != 1:
+                          raise RuntimeError(f"unexpected attestation count for {filename}")
+                      statement = json.loads(
+                          base64.b64decode(attestations[0]["envelope"]["statement"])
+                      )
+                      if statement["subject"] != [
+                          {"name": filename, "digest": {"sha256": digest}}
+                      ]:
+                          raise RuntimeError(f"attested subject differs for {filename}")
+                  break
+              except (KeyError, OSError, RuntimeError, urllib.error.HTTPError) as exc:
+                  error = str(exc)
+                  if attempt == 19:
+                      raise SystemExit(error) from exc
+                  time.sleep(3)
+          PY
+      - name: Clean wheel and forced-sdist installs from PyPI
+        env:
+          PACKAGE_VERSION: ${{ github.event.release.tag_name }}
+        run: |
+          version="${PACKAGE_VERSION#v}"
+          python -m venv wheel-smoke
+          python -m venv sdist-smoke
+          wheel-smoke/bin/python -m pip install --no-cache-dir \
+            --only-binary=:all: "ctxfire==$version"
+          sdist-smoke/bin/python -m pip install --no-cache-dir \
+            --no-binary=ctxfire "ctxfire==$version"
+          test "$(wheel-smoke/bin/ctxfire --version)" = "ctxfire $version"
+          test "$(sdist-smoke/bin/ctxfire --version)" = "ctxfire $version"
