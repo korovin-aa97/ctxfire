@@ -2,7 +2,7 @@
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#07111f"/>
-      <stop offset="1" stop-color="#152c3d"/>
+      <stop offset="1" stop-color="#35201c"/>
     </linearGradient>
     <linearGradient id="fire" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="#ffb347"/>
@@ -13,7 +13,7 @@
     </filter>
   </defs>
   <rect width="1280" height="640" rx="28" fill="url(#bg)"/>
-  <circle cx="1110" cy="96" r="210" fill="#1d5365" opacity="0.22"/>
+  <circle cx="1110" cy="96" r="210" fill="#ff8a5c" opacity="0.13"/>
   <circle cx="1180" cy="570" r="260" fill="#ff784f" opacity="0.08"/>
 
   <text x="76" y="116" fill="url(#fire)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="28" font-weight="700">OPEN SOURCE · LOCAL ONLY · ZERO TELEMETRY</text>
@@ -21,25 +21,25 @@
   <text x="76" y="286" fill="#bdd1dd" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="30">Explain and budget your agents’ static context graph.</text>
 
   <g filter="url(#shadow)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22">
-    <rect x="76" y="370" width="212" height="92" rx="18" fill="#16384a" stroke="#4e8397"/>
-    <text x="112" y="425" fill="#e9f5fb">agent</text>
+    <rect x="76" y="370" width="212" height="92" rx="18" fill="#241d22" stroke="#9b5b48"/>
+    <text x="182" y="425" text-anchor="middle" fill="#fff3ed">agent</text>
     <path d="M288 416 H352" stroke="#ff9566" stroke-width="4"/>
     <path d="M342 405 L356 416 L342 427" fill="none" stroke="#ff9566" stroke-width="4"/>
 
-    <rect x="356" y="370" width="212" height="92" rx="18" fill="#16384a" stroke="#4e8397"/>
-    <text x="386" y="425" fill="#e9f5fb">adapter@1</text>
+    <rect x="356" y="370" width="212" height="92" rx="18" fill="#241d22" stroke="#9b5b48"/>
+    <text x="462" y="425" text-anchor="middle" fill="#fff3ed">adapter@1</text>
     <path d="M568 416 H632" stroke="#ff9566" stroke-width="4"/>
     <path d="M622 405 L636 416 L622 427" fill="none" stroke="#ff9566" stroke-width="4"/>
 
-    <rect x="636" y="370" width="212" height="92" rx="18" fill="#16384a" stroke="#4e8397"/>
-    <text x="664" y="410" fill="#e9f5fb">context</text>
-    <text x="688" y="442" fill="#91b3c2" font-size="18">exact bytes</text>
+    <rect x="636" y="370" width="212" height="92" rx="18" fill="#241d22" stroke="#9b5b48"/>
+    <text x="742" y="410" text-anchor="middle" fill="#fff3ed">context</text>
+    <text x="742" y="442" text-anchor="middle" fill="#c6aaa0" font-size="18">exact bytes</text>
     <path d="M848 416 H912" stroke="#ff9566" stroke-width="4"/>
     <path d="M902 405 L916 416 L902 427" fill="none" stroke="#ff9566" stroke-width="4"/>
 
-    <rect x="916" y="350" width="286" height="132" rx="18" fill="#203849" stroke="#ff8b61" stroke-width="2"/>
-    <text x="950" y="403" fill="#f7fbff">68,280 tokens/day</text>
-    <text x="950" y="441" fill="#91b3c2" font-size="18">estimate + assumptions</text>
+    <rect x="916" y="350" width="286" height="132" rx="18" fill="#30201f" stroke="#ff8b61" stroke-width="2"/>
+    <text x="1059" y="403" text-anchor="middle" fill="#fff8f4" font-size="21">68,280 tokens/day</text>
+    <text x="1059" y="441" text-anchor="middle" fill="#c6aaa0" font-size="18">estimate + assumptions</text>
   </g>
 
   <text x="76" y="560" fill="#86a9ba" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="22">Codex · Claude Code · AGENTS.md · JSON · SARIF · CI budgets</text>
