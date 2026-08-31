@@ -1,8 +1,8 @@
 # ctxfire — Public Release Plan
 
-Status: `v0.1.3` is public on GitHub under the immutable-releases policy and on
-PyPI through an OIDC trusted publisher with attestations. Later launch
-promotion remains intentionally separate.
+Status: `v0.2.0` is the current feature release, driven by the first external
+evaluation; `v0.1.3` is the preceding public patch. Launch promotion remains a
+separate, explicitly authorized operation.
 
 ## Release thesis
 
@@ -58,8 +58,8 @@ same graph under the pinned adapter version.
 - [x] Add human, JSON, and SARIF/GitHub annotation outputs with versioned schema.
 - [x] Add a dependency-free byte estimate plus optional accurate tokenizers.
 - [x] Support schedule inputs without becoming a scheduler.
-- [x] Make default output metadata-only; never print repository content unless
-      explicitly requested.
+- [x] Never print repository content; declare metadata-only versus narrow local
+      content parsing in every machine report.
 - [x] Add fixture repositories for every loading and discovery rule.
 - [x] Validate results manually on 10–20 unrelated public repositories and keep
       a dated, reproducible validation report.
@@ -118,8 +118,10 @@ Do not execute without an explicit owner instruction.
 
 ## Phase 6 — Launch content, days 2–14
 
-- [ ] Show HN after at least one quiet day: link GitHub, show a real repository
-      graph, disclose assumptions and limitations in the maker comment.
+- [x] Prepare a channel-specific approval kit, reproducible self-scan, terminal
+      recording, and launch-card assets without publishing or submitting
+      anything.
+- [x] Skip HN for this campaign by owner decision.
 - [ ] Publish different posts on different days for r/ClaudeCode, r/codex,
       r/opensource, and cost/LLM engineering communities.
 - [ ] Story article: the hidden daily cost of repeated agent instructions.
@@ -138,6 +140,16 @@ Do not execute without an explicit owner instruction.
 - [ ] Add new engines only with fixtures and maintainable semantics.
 - [ ] After 30 days, continue active investment only if at least three external
       users repeatedly run it or keep it in CI; otherwise maintain the core.
+
+### Feedback journal
+
+- 2026-08-31: first confirmed external evaluation of `ctxfire==0.1.3`. The
+  private report identified three actionable static-model gaps: mixed Claude
+  rule `paths:`, skill catalogs, and subagent `skills:` preloads. A synthetic,
+  non-attributed `claude-code@2` regression fixture covers all three. Runtime
+  history, tool output, external memory, settings, hooks, and MCP behavior stay
+  explicitly outside scope. Do not publish the evaluator's repository name or
+  measurements without separate permission.
 
 ## Actions reserved for the owner
 

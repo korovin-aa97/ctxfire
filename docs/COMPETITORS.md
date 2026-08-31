@@ -35,7 +35,7 @@ runtime measurement.
 | Project | Primary job | Difference from `ctxfire` |
 |---|---|---|
 | ContextCost | measure/reduce repository files | flat repository walk; no per-agent loading graph/schedule |
-| Context Analyzer | runtime context-window forensics | observes sessions/hooks; `ctxfire` is static and metadata-only |
+| Context Analyzer | runtime context-window forensics | observes sessions/hooks; `ctxfire` is a local static loading model |
 | Repomix | pack repositories for LLM input | creates context bundles; `ctxfire` does not package content |
 | Trazum | local prompt/usage-log cost analysis | runtime prompts/logs rather than declared context-loading graph |
 
@@ -48,7 +48,7 @@ Primary project pages checked:
 
 ## Wedge retained
 
-The defensible v0.1 unit is:
+The defensible product unit is:
 
 ```text
 agent → versioned adapter rule → context edge → activation assumption → fires/day

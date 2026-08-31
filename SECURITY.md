@@ -19,9 +19,10 @@ first message. You should receive an acknowledgment within 72 hours.
 `ctxfire` scans an untrusted local repository. It never executes repository
 files or configuration commands. It invokes only the local `git` executable
 with a fixed argument list, does not use a shell, and does not follow symlinks.
-The default estimator reads metadata only. The explicitly enabled tokenizer
-reads matched bytes locally in memory but does not print, retain, or upload
-their content.
+Metadata-only adapters read file sizes. The content-aware `claude-code@2`
+adapter reads matched rule, skill, and subagent Markdown locally in memory, and
+an explicitly enabled tokenizer reads matched bytes for tokenization. Neither
+prints, retains, or uploads file content.
 
 Treat third-party repositories as untrusted anyway: run in a normal
 least-privilege account and inspect dependency changes before upgrading.

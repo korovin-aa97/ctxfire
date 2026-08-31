@@ -107,8 +107,9 @@ def _load_snapshot(path: Path) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError(f"not a ctxfire report object: {path}")
-    if payload.get("schema_version") != "1.0" or not isinstance(payload.get("agents"), list):
-        raise ValueError(f"not a ctxfire report schema 1.0: {path}")
+    schema_version = payload.get("schema_version")
+    if schema_version not in {"1.0", "1.1"} or not isinstance(payload.get("agents"), list):
+        raise ValueError(f"not a supported ctxfire report schema: {path}")
     names: set[str] = set()
     for agent in payload["agents"]:
         if not isinstance(agent, dict):
@@ -144,6 +145,9 @@ def _load_snapshot(path: Path) -> dict[str, Any]:
                 if not isinstance(value, int) or isinstance(value, bool) or value < 0:
                     raise ValueError(f"invalid {field} for {name}/{file_path} in {path}")
             activation_rate = item.get("activation_rate")
+            activation = item.get("activation")
+            if activation not in {"always", "conditional", "mixed"}:
+                raise ValueError(f"invalid activation for {name}/{file_path} in {path}")
             if (
                 not isinstance(activation_rate, int | float)
                 or isinstance(activation_rate, bool)
@@ -151,6 +155,39 @@ def _load_snapshot(path: Path) -> dict[str, Any]:
                 or not 0 <= activation_rate <= 1
             ):
                 raise ValueError(f"invalid activation_rate for {name}/{file_path} in {path}")
+            components = item.get("components")
+            if schema_version == "1.1":
+                if not isinstance(components, list) or not components:
+                    raise ValueError(f"invalid components for {name}/{file_path} in {path}")
+                for component in components:
+                    if not isinstance(component, dict):
+                        raise ValueError(f"invalid component for {name}/{file_path} in {path}")
+                    if (
+                        not isinstance(component.get("kind"), str)
+                        or not component["kind"]
+                        or component.get("activation") not in {"always", "conditional"}
+                        or not isinstance(component.get("reason"), str)
+                        or not component["reason"]
+                    ):
+                        raise ValueError(
+                            f"invalid component metadata for {name}/{file_path} in {path}"
+                        )
+                    for field in ("counted_bytes", "estimated_tokens"):
+                        value = component.get(field)
+                        if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+                            raise ValueError(
+                                f"invalid component {field} for {name}/{file_path} in {path}"
+                            )
+                    component_rate = component.get("activation_rate")
+                    if (
+                        not isinstance(component_rate, int | float)
+                        or isinstance(component_rate, bool)
+                        or not math.isfinite(component_rate)
+                        or not 0 <= component_rate <= 1
+                    ):
+                        raise ValueError(
+                            f"invalid component activation_rate for {name}/{file_path} in {path}"
+                        )
     return payload
 
 
@@ -194,7 +231,7 @@ def command_diff(args: argparse.Namespace) -> int:
             }
         )
     payload = {
-        "schema_version": "1.0",
+        "schema_version": "1.1",
         "kind": "ctxfire-diff",
         "assumptions_before": before.get("assumptions"),
         "assumptions_after": after.get("assumptions"),

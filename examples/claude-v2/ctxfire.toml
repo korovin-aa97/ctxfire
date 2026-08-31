@@ -1,0 +1,22 @@
+schema_version = "1"
+
+[project]
+name = "claude-v2-synthetic"
+root = "."
+bytes_per_token = 4.0
+tokenizer = "byte-estimate"
+model = "unspecified"
+price_date = "unspecified"
+cache_assumption = "no-cache-credit"
+conditional_activation_rate = 0.25
+
+[[agents]]
+name = "main-session"
+adapter = "claude-code@2"
+fires_per_day = 1
+
+[[agents]]
+name = "reviewer-role"
+adapter = "claude-code@2"
+claude_subagent = "reviewer"
+fires_per_day = 1

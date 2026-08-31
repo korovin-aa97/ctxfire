@@ -6,7 +6,8 @@ Thank you for helping make agent context costs explainable.
 2. Keep runtime code dependency-free unless a dependency has a clear accuracy
    or security benefit.
 3. Add a regression fixture for every adapter/discovery quirk.
-4. Keep reports metadata-only and repository-relative by default.
+4. Keep reports repository-relative, never emit file content, and declare any
+   adapter that requires narrow local content parsing.
 5. Run `ruff format --check .`, `ruff check .`, `mypy src`, `pytest`,
    `bandit -q -r src`, and `python -m build`.
 

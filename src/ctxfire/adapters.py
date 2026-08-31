@@ -103,47 +103,74 @@ def inclusions(
                     "codex@1 skill body; loaded only when selected",
                 )
             )
-    if agent.adapter == "claude-code@1":
+    if agent.adapter in {"claude-code@1", "claude-code@2"}:
+        version = agent.adapter
         for directory in directories:
             for filename in ("CLAUDE.md", "CLAUDE.local.md", ".claude/CLAUDE.md"):
                 result.append(
                     Inclusion(
                         _under(directory, filename),
                         "always",
-                        "claude-code@1 project memory ancestor chain",
+                        f"{version} project memory ancestor chain",
                     )
                 )
             result.append(
                 Inclusion(
                     _under(directory, ".claude/rules/**/*.md"),
-                    agent.claude_rules_activation,
-                    "claude-code@1 project rule; metadata-only mode cannot parse paths frontmatter",
+                    (agent.claude_rules_activation if version == "claude-code@1" else "always"),
+                    (
+                        "claude-code@1 project rule; metadata-only mode cannot parse "
+                        "paths frontmatter"
+                        if version == "claude-code@1"
+                        else "claude-code@2 project rule; activation parsed from paths frontmatter"
+                    ),
                 )
             )
             result.append(
                 Inclusion(
                     _under(directory, ".claude/skills/*/SKILL.md"),
                     "conditional",
-                    "claude-code@1 skill body; loaded only when selected",
+                    (
+                        "claude-code@1 skill body; loaded only when selected"
+                        if version == "claude-code@1"
+                        else "claude-code@2 project skill; catalog/body activation parsed locally"
+                    ),
                 )
             )
+            if version == "claude-code@2":
+                result.append(
+                    Inclusion(
+                        _under(directory, ".claude/agents/**/*.md"),
+                        "always",
+                        (
+                            "claude-code@2 project subagent; catalog or selected "
+                            "definition parsed locally"
+                        ),
+                    )
+                )
         working_prefix = "" if agent.working_directory == "." else f"{agent.working_directory}/"
         result.extend(
             [
                 Inclusion(
                     f"{working_prefix}**/CLAUDE.md",
                     "conditional",
-                    "claude-code@1 descendant memory; loaded when that subtree is read",
+                    f"{version} descendant memory; loaded when that subtree is read",
                 ),
                 Inclusion(
                     f"{working_prefix}**/CLAUDE.local.md",
                     "conditional",
-                    "claude-code@1 descendant local memory; loaded when that subtree is read",
+                    f"{version} descendant local memory; loaded when that subtree is read",
                 ),
                 Inclusion(
                     f"{working_prefix}**/.claude/skills/*/SKILL.md",
                     "conditional",
-                    "claude-code@1 descendant skill body; available when that subtree is read",
+                    (
+                        "claude-code@1 descendant skill body; available when that subtree is read"
+                        if version == "claude-code@1"
+                        else (
+                            "claude-code@2 descendant skill; catalog/body activation parsed locally"
+                        )
+                    ),
                 ),
             ]
         )
@@ -172,7 +199,7 @@ def exact_probe_paths(agent: AgentConfig) -> tuple[str, ...]:
                     *agent.instruction_fallback_filenames,
                 )
             )
-    elif agent.adapter == "claude-code@1":
+    elif agent.adapter in {"claude-code@1", "claude-code@2"}:
         for directory in directories:
             result.extend(
                 _under(directory, filename)

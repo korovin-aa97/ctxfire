@@ -1,6 +1,6 @@
 # ctxfire — Agent Bootstrap
 
-Last updated: 2026-08-30. Repository status: **v0.1.3 public patch release**.
+Last updated: 2026-08-31. Repository status: **v0.2.0 feature release**.
 
 Read this file first, followed by `README.md`, `ctxfire.example.toml`, the
 source, and `docs/PUBLIC_RELEASE_PLAN.md`.
@@ -26,10 +26,13 @@ and daily cost are estimates and must always expose their assumptions.
 
 ## Current state
 
-- Version `0.1.3`; a distribution-only patch over the public 0.1.1 runtime.
+- Version `0.2.0`; a content-aware Claude adapter release based on the first
+  external user evaluation.
 - Versioned explicit, AGENTS.md, Codex, and Claude Code adapters.
 - Git-index discovery plus narrow exact probes for ignored engine instructions.
-- `scan`, `explain`, `diff`, and `check`; human, JSON 1.0, and SARIF 2.1.0.
+- `scan`, `explain`, `diff`, and `check`; human, JSON 1.1, and SARIF 2.1.0.
+- `claude-code@2` parses rule `paths:`, skill/subagent catalogs, and selected
+  subagent `skills:` preloads locally; `claude-code@1` remains unchanged.
 - Dependency-free byte estimates and an opt-in local tiktoken backend.
 - MIT license, community/security docs, CI, release workflow, fixtures, schema,
   demo, PyPI trusted publishing with provenance, and a dated 18-repository
@@ -52,11 +55,11 @@ and daily cost are estimates and must always expose their assumptions.
 ## Next work, in order
 
 1. Keep adapter semantics aligned with their dated official sources.
-2. Preserve report schema 1.0 compatibility through the 0.1 line.
+2. Preserve schema 1.0 snapshot input compatibility while emitting schema 1.1.
 3. Triage real user reports before expanding engine or tokenizer scope.
 4. Treat runtime measurement, package management, and scheduling as out of scope.
 
-## v0.1 definition of done
+## Release definition of done
 
 - Loading rules are documented and pinned per adapter version.
 - Discovery agrees with each supported engine on representative fixtures.

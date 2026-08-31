@@ -13,6 +13,7 @@ from ctxfire.adapters import matches
 from ctxfire.cli import EXIT_BUDGET_EXCEEDED, EXIT_ERROR, EXIT_OK, main
 from ctxfire.config import load_config
 from ctxfire.discovery import inventory
+from ctxfire.frontmatter import parse_frontmatter_bytes
 from ctxfire.scanner import scan
 
 
@@ -84,6 +85,161 @@ class ScanTests(RepositoryFixture):
         report = scan(load_config(self.config(adapter="claude-code@1")))
         rule = next(item for item in report.agents[0].files if item.path.endswith("python.md"))
         self.assertEqual("always", rule.activation)
+
+    def test_claude_v2_parses_mixed_rule_activation(self) -> None:
+        self.write(
+            ".claude/rules/python.md",
+            '---\npaths:\n  - "src/**/*.py"\n---\n\nPython rule\n',
+        )
+        self.write(".claude/rules/general.md", "General rule\n")
+        report = scan(load_config(self.config(adapter="claude-code@2")))
+        files = {item.path: item for item in report.agents[0].files}
+        self.assertEqual("conditional", files[".claude/rules/python.md"].activation)
+        self.assertEqual(0.5, files[".claude/rules/python.md"].activation_rate)
+        self.assertEqual("always", files[".claude/rules/general.md"].activation)
+        self.assertEqual("matched-file-content-local", report.discovery["content_access"])
+
+    def test_claude_v2_accounts_for_skill_and_subagent_catalogs(self) -> None:
+        self.write(
+            ".claude/skills/review/SKILL.md",
+            "---\nname: review\ndescription: Review changed code\n---\n\nDetailed body.\n",
+        )
+        self.write(
+            ".claude/agents/reviewer.md",
+            "---\nname: reviewer\ndescription: Review pull requests\n---\n\nAgent prompt.\n",
+        )
+        report = scan(load_config(self.config(adapter="claude-code@2")))
+        files = {item.path: item for item in report.agents[0].files}
+        skill = files[".claude/skills/review/SKILL.md"]
+        self.assertEqual("mixed", skill.activation)
+        self.assertEqual(
+            ["skill-catalog", "skill-body"], [component.kind for component in skill.components]
+        )
+        subagent = files[".claude/agents/reviewer.md"]
+        self.assertEqual(["subagent-catalog"], [item.kind for item in subagent.components])
+
+    def test_claude_v2_descendant_skill_catalog_is_not_available_at_launch(self) -> None:
+        self.write(
+            "apps/api/.claude/skills/review/SKILL.md",
+            "---\nname: review\ndescription: Review API changes\n---\n\nDetailed body.\n",
+        )
+        report = scan(load_config(self.config(adapter="claude-code@2")))
+        skill = next(
+            item
+            for item in report.agents[0].files
+            if item.path == "apps/api/.claude/skills/review/SKILL.md"
+        )
+        self.assertEqual("mixed", skill.activation)
+        self.assertEqual("always", skill.components[0].activation)
+
+        config_path = self.config(adapter="claude-code@2")
+        config_path.write_text(
+            config_path.read_text(encoding="utf-8").replace(
+                'working_directory = "apps/api"', 'working_directory = "."'
+            ),
+            encoding="utf-8",
+        )
+        root_report = scan(load_config(config_path))
+        root_skill = next(
+            item
+            for item in root_report.agents[0].files
+            if item.path == "apps/api/.claude/skills/review/SKILL.md"
+        )
+        self.assertEqual("conditional", root_skill.activation)
+        self.assertTrue(
+            all(component.activation == "conditional" for component in root_skill.components)
+        )
+
+    def test_claude_v2_selected_subagent_preloads_declared_skills(self) -> None:
+        self.write(
+            ".claude/skills/review/SKILL.md",
+            "---\nname: review\ndescription: Review changed code\n---\n\nDetailed body.\n",
+        )
+        self.write(
+            ".claude/agents/reviewer.md",
+            "---\nname: reviewer\ndescription: Review pull requests\nskills:\n  - review\n"
+            "---\n\nAgent prompt.\n",
+        )
+        config_path = self.config(adapter="claude-code@2")
+        with config_path.open("a", encoding="utf-8") as handle:
+            handle.write('claude_subagent = "reviewer"\n')
+        report = scan(load_config(config_path))
+        files = {item.path: item for item in report.agents[0].files}
+        self.assertEqual(
+            ["subagent-definition"],
+            [item.kind for item in files[".claude/agents/reviewer.md"].components],
+        )
+        self.assertEqual(
+            ["preloaded-skill"],
+            [item.kind for item in files[".claude/skills/review/SKILL.md"].components],
+        )
+        self.assertEqual("always", files[".claude/skills/review/SKILL.md"].activation)
+
+    def test_claude_v2_preload_does_not_resolve_to_an_undiscovered_descendant(self) -> None:
+        self.write(
+            ".claude/skills/review/SKILL.md",
+            "---\nname: review\ndescription: Root review\n---\n\nRoot body.\n",
+        )
+        self.write(
+            "packages/api/.claude/skills/review/SKILL.md",
+            "---\nname: review\ndescription: Nested review\n---\n\nNested body.\n",
+        )
+        self.write(
+            ".claude/agents/reviewer.md",
+            "---\nname: reviewer\ndescription: Review pull requests\nskills: [review]\n"
+            "---\n\nAgent prompt.\n",
+        )
+        config_path = self.config(adapter="claude-code@2")
+        config_path.write_text(
+            config_path.read_text(encoding="utf-8").replace(
+                'working_directory = "apps/api"', 'working_directory = "."'
+            ),
+            encoding="utf-8",
+        )
+        with config_path.open("a", encoding="utf-8") as handle:
+            handle.write('claude_subagent = "reviewer"\n')
+        files = {item.path: item for item in scan(load_config(config_path)).agents[0].files}
+        self.assertEqual(
+            ["preloaded-skill"],
+            [item.kind for item in files[".claude/skills/review/SKILL.md"].components],
+        )
+        self.assertEqual(
+            ["skill-catalog", "skill-body"],
+            [item.kind for item in files["packages/api/.claude/skills/review/SKILL.md"].components],
+        )
+
+    def test_claude_v2_warns_when_a_preloaded_skill_drifts(self) -> None:
+        self.write(
+            ".claude/agents/reviewer.md",
+            "---\nname: reviewer\ndescription: Review pull requests\nskills: [missing]\n"
+            "---\n\nAgent prompt.\n",
+        )
+        config_path = self.config(adapter="claude-code@2")
+        with config_path.open("a", encoding="utf-8") as handle:
+            handle.write('claude_subagent = "reviewer"\n')
+        report = scan(load_config(config_path))
+        self.assertTrue(any("preloaded Claude skill 'missing'" in item for item in report.warnings))
+
+    def test_claude_v2_hides_disabled_skill_catalog_and_rejects_its_preload(self) -> None:
+        self.write(
+            ".claude/skills/manual/SKILL.md",
+            "---\nname: manual\ndescription: Manual side effect\n"
+            "disable-model-invocation: true # user only\n---\n\nRun manually.\n",
+        )
+        self.write(
+            ".claude/agents/reviewer.md",
+            "---\nname: reviewer\ndescription: Review pull requests\nskills: [manual]\n"
+            "---\n\nAgent prompt.\n",
+        )
+        config_path = self.config(adapter="claude-code@2")
+        with config_path.open("a", encoding="utf-8") as handle:
+            handle.write('claude_subagent = "reviewer"\n')
+        report = scan(load_config(config_path))
+        skill = next(
+            item for item in report.agents[0].files if item.path == ".claude/skills/manual/SKILL.md"
+        )
+        self.assertEqual(["skill-body"], [item.kind for item in skill.components])
+        self.assertTrue(any("cannot be preloaded" in item for item in report.warnings))
 
     def test_codex_override_precedence_and_instruction_cap(self) -> None:
         self.write("apps/api/AGENTS.override.md", "override rules\n")
@@ -232,7 +388,7 @@ class CliTests(RepositoryFixture):
             EXIT_OK,
             main(["scan", "--config", str(config), "--format", "json", "--output", str(after)]),
         )
-        self.assertEqual("1.0", json.loads(after.read_text())["schema_version"])
+        self.assertEqual("1.1", json.loads(after.read_text())["schema_version"])
         self.assertEqual(EXIT_OK, main(["diff", str(before), str(after), "--format", "json"]))
 
     def test_check_exit_codes_and_sarif(self) -> None:
@@ -351,8 +507,31 @@ class CliTests(RepositoryFixture):
         )
         self.assertEqual(EXIT_ERROR, main(["diff", str(malformed), str(valid)]))
 
+    def test_diff_accepts_a_schema_1_0_snapshot(self) -> None:
+        config = self.config()
+        current = self.root / "current.json"
+        legacy = self.root / "legacy.json"
+        self.assertEqual(
+            EXIT_OK,
+            main(["scan", "--config", str(config), "--format", "json", "--output", str(current)]),
+        )
+        payload = json.loads(current.read_text(encoding="utf-8"))
+        payload["schema_version"] = "1.0"
+        for agent in payload["agents"]:
+            for item in agent["files"]:
+                item.pop("components")
+        legacy.write_text(json.dumps(payload), encoding="utf-8")
+        self.assertEqual(EXIT_OK, main(["diff", str(legacy), str(current), "--format", "json"]))
+
 
 class ConfigValidationTests(RepositoryFixture):
+    def test_claude_v2_rejects_the_legacy_project_wide_rule_override(self) -> None:
+        config = self.config(adapter="claude-code@2")
+        with config.open("a", encoding="utf-8") as handle:
+            handle.write('claude_rules_activation = "conditional"\n')
+        with self.assertRaisesRegex(ValueError, "derived from each rule"):
+            load_config(config)
+
     def test_non_finite_numeric_assumptions_are_rejected(self) -> None:
         replacements = (
             ("bytes_per_token = 4", "bytes_per_token = nan"),
@@ -389,6 +568,25 @@ class ConfigValidationTests(RepositoryFixture):
 
 
 class PatternTests(unittest.TestCase):
+    def test_frontmatter_parser_supports_lists_and_folded_scalars(self) -> None:
+        document = parse_frontmatter_bytes(
+            b"---\npaths:\n  - 'src/**/*.py'\nskills: [review, test]\n"
+            b"description: >\n  Review changes\n  carefully\n---\nBody\n"
+        )
+        self.assertEqual(("src/**/*.py",), document.items("paths"))
+        self.assertEqual(("review", "test"), document.items("skills"))
+        self.assertEqual("Review changes carefully", document.scalar("description"))
+
+    def test_frontmatter_parser_strips_plain_comments_but_preserves_quoted_hashes(self) -> None:
+        document = parse_frontmatter_bytes(
+            b"---\n"
+            b"disable-model-invocation: true # user-only\n"
+            b'paths: ["src/#generated/**"] # scoped\n'
+            b"---\n"
+        )
+        self.assertEqual("true", document.scalar("disable-model-invocation"))
+        self.assertEqual(("src/#generated/**",), document.items("paths"))
+
     def test_double_star_matches_zero_or_more_directories(self) -> None:
         self.assertTrue(matches(".agents/skills/x/SKILL.md", ".agents/skills/*/SKILL.md"))
         self.assertTrue(matches("rules/python.md", "**/*.md"))

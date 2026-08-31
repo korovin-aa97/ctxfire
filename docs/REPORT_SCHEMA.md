@@ -1,8 +1,11 @@
 # Report and CLI contract
 
-Report schema: `1.0`. Configuration schema: `1`.
+Report schema: `1.1`. Configuration schema: `1`.
 
-The canonical schema is [`../schemas/report-v1.0.schema.json`](../schemas/report-v1.0.schema.json).
+The canonical schema is
+[`../schemas/report-v1.1.schema.json`](../schemas/report-v1.1.schema.json).
+Schema 1.0 remains published for existing snapshots, and `ctxfire diff` accepts
+both 1.0 and 1.1 inputs.
 
 ## Scan JSON
 
@@ -23,12 +26,23 @@ candidate's estimated token count by its activation rate and rounds up. Daily
 tokens multiply that figure by `fires_per_day` and round up.
 
 Each edge has `exact_bytes` from the current file and `counted_bytes` after an
-adapter loading cap. These differ, for example, when the declared Codex combined
-instruction limit truncates the final file. Token estimates use `counted_bytes`.
+adapter loading cap or component expansion. These differ, for example, when the
+declared Codex combined instruction limit truncates the final file or when one
+Claude skill contributes both a catalog entry and a full body.
 
-`discovery.content_access` is `metadata-only` for the dependency-free byte
-estimator and `matched-file-content-local` for an opt-in tokenizer. Assumptions
-record both tokenizer identity and installed version.
+Schema 1.1 requires a non-empty `components` array on every file edge. A
+component has its own `kind`, `counted_bytes`, `estimated_tokens`, `activation`,
+`activation_rate`, and `reason`. A file is `mixed` when its components do not
+share one activation/rate. File `counted_bytes` and `estimated_tokens` are sums
+of the components; its activation rate is their token-weighted average. Daily
+aggregation weights components directly, so the machine report preserves the
+always-on/conditional split instead of collapsing it into one opaque file
+assumption.
+
+`discovery.content_access` is `metadata-only` when neither the adapter nor the
+tokenizer needs file content. It is `matched-file-content-local` for the
+content-aware `claude-code@2` adapter and for an opt-in tokenizer. Assumptions
+record tokenizer identity/version; adapter reasons disclose the metadata parse.
 
 USD is `null` unless `usd_per_million_input_tokens` is explicitly configured.
 When configured, it represents API-equivalent input pricing under the recorded
@@ -46,11 +60,11 @@ layout.
 
 ## Diff
 
-`diff` accepts two valid full schema-1.0 scan snapshots. It reports per-agent daily
-token delta and path additions/removals. A size-only change appears in the token
-delta even when the path sets are unchanged. Because snapshots can record
-different assumptions, the text output states that each side uses its own
-assumptions.
+`diff` accepts two valid full schema-1.0 or schema-1.1 scan snapshots, including
+a cross-version pair. It reports per-agent daily token delta and path
+additions/removals. A size-only or activation change appears in the token delta
+even when the path sets are unchanged. Because snapshots can record different
+assumptions, the text output states that each side uses its own assumptions.
 
 ## Exit codes
 
@@ -62,3 +76,5 @@ assumptions.
 
 Adding an optional field is backward-compatible. Removing a field, changing a
 field's meaning/type, or changing aggregation requires a new report schema.
+Schema 1.1 changed aggregation by adding component-level activation; consumers
+that only understand 1.0 must reject it rather than silently flattening it.

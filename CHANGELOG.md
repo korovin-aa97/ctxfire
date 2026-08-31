@@ -3,6 +3,33 @@
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/) and
 this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-08-31
+
+### Added
+
+- Add the content-aware `claude-code@2` adapter while preserving
+  `claude-code@1` unchanged for metadata-only compatibility.
+- Classify each Claude rule from its top-level `paths:` frontmatter instead of
+  forcing one activation class across a mixed rule set.
+- Account separately for always-visible skill and subagent catalogs,
+  conditional full skill bodies, selected subagent definitions, and native
+  `skills:` preloads.
+- Warn when a selected subagent, declared preload, or same-scope definition is
+  missing, disabled, or ambiguous.
+- Add report schema 1.1 with independently activated per-file `components` and
+  a synthetic Claude v2 example.
+
+### Changed
+
+- `diff` accepts both schema 1.0 and 1.1 scan snapshots.
+- Reports explicitly disclose local matched-file reads required for Claude v2
+  frontmatter/catalog parsing.
+
+### Fixed
+
+- Remove the material overcount caused by treating path-scoped and unscoped
+  Claude rules as one project-wide activation class.
+
 ## [0.1.3] - 2026-08-30
 
 ### Fixed
@@ -55,6 +82,7 @@ byte-match the immutable GitHub Release files.
 - Explicit token, schedule, conditional-activation, cache, price, and model assumptions.
 - Reproducible fixtures, external-repository validation, packaging, and CI.
 
+[0.2.0]: https://github.com/korovin-aa97/ctxfire/releases/tag/v0.2.0
 [0.1.3]: https://github.com/korovin-aa97/ctxfire/releases/tag/v0.1.3
 [0.1.2]: https://github.com/korovin-aa97/ctxfire/releases/tag/v0.1.2
 [0.1.1]: https://github.com/korovin-aa97/ctxfire/releases/tag/v0.1.1

@@ -8,9 +8,11 @@ negotiated prices are outside scope.
 
 ## Does it upload my repository?
 
-No. There is no telemetry or network code. The default estimator reads file
-metadata only. The optional tiktoken backend reads matched bytes locally in
-memory and does not print, store, or upload content.
+No. There is no telemetry or network code. Metadata-only adapters read file
+sizes. `claude-code@2` reads matched rule/skill/subagent Markdown locally to
+parse frontmatter and catalog fields, and the optional tiktoken backend reads
+matched bytes locally for tokenization. Neither prints, stores, or uploads file
+content; the report declares local content access.
 
 ## Why does the same file appear for several agents?
 
@@ -18,12 +20,19 @@ The graph deduplicates a file within one agent but preserves it across agents.
 If five agents load the same root instructions, that repeated context is the
 point of the analysis.
 
-## Why are Claude rules counted as always-on?
+## Why is a Claude rule always-on or conditional?
 
-Claude distinguishes unconditional rules from rules with path frontmatter.
-v0.1 is metadata-only by default and does not parse that frontmatter, so the
-adapter uses a conservative upper bound. Projects can explicitly choose a
-conditional aggregate assumption.
+`claude-code@2` parses each rule: no top-level `paths` means always-on; `paths`
+means conditional under the configured activation rate. The legacy
+metadata-only `claude-code@1` adapter retains its conservative project-wide
+behavior for reproducibility.
+
+## Why can counted bytes exceed the file size?
+
+One source file can feed more than one runtime surface. A Claude skill, for
+example, contributes its name/description catalog at startup and its full body
+when invoked. Schema 1.1 exposes both components instead of pretending the file
+has one activation class.
 
 ## Why was a symlink skipped?
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
-REPORT_SCHEMA_VERSION = "1.0"
+REPORT_SCHEMA_VERSION = "1.1"
 CONFIG_SCHEMA_VERSION = "1"
 
 
@@ -24,6 +24,18 @@ class Assumptions:
 
 
 @dataclass(frozen=True)
+class ContextComponent:
+    """One independently activated portion of a context file."""
+
+    kind: str
+    counted_bytes: int
+    estimated_tokens: int
+    activation: str
+    activation_rate: float
+    reason: str
+
+
+@dataclass(frozen=True)
 class ContextFile:
     """One privacy-safe context graph edge and its filesystem fact."""
 
@@ -35,6 +47,7 @@ class ContextFile:
     activation_rate: float
     reason: str
     pattern: str
+    components: tuple[ContextComponent, ...]
 
 
 @dataclass(frozen=True)

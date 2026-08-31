@@ -14,6 +14,7 @@
 
 - File sizes are exact; tokens and costs are estimates.
 - Reports are not measured usage or vendor bills.
-- The default estimator reads metadata only; the optional tokenizer reads
-  matched bytes locally. Neither mode follows symlinks or uploads content.
+- Metadata-only adapters read file sizes. `claude-code@2` reads matched Claude
+  Markdown locally for frontmatter/catalog parsing; an optional tokenizer reads
+  matched bytes locally. No mode follows symlinks or uploads content.
 - Adapter and report schema changes are public API changes.

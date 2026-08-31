@@ -27,6 +27,7 @@ def scan_text(report: ScanReport) -> str:
             f"model {assumptions.model}; price date {assumptions.price_date}; "
             f"cache {assumptions.cache_assumption}."
         ),
+        f"Content access: {report.discovery['content_access']}.",
         "",
     ]
     for agent in report.agents:
@@ -71,7 +72,10 @@ def explain_text(report: ScanReport, agent_name: str | None, file_path: str | No
         (
             "No file contents were read or printed."
             if report.discovery["content_access"] == "metadata-only"
-            else "Matched file content was tokenized locally and was not printed or uploaded."
+            else (
+                "Matched file content was read locally for adapter metadata and/or tokenization; "
+                "it was not printed or uploaded."
+            )
         ),
         "Byte sizes are exact; token figures are estimates.",
         (
@@ -93,12 +97,26 @@ def explain_text(report: ScanReport, agent_name: str | None, file_path: str | No
             matched += 1
             size = f"{item.exact_bytes} exact bytes"
             if item.counted_bytes != item.exact_bytes:
-                size += f", {item.counted_bytes} counted after adapter cap"
+                detail = (
+                    "after adapter cap"
+                    if len(item.components) == 1 and item.components[0].kind == "whole-file"
+                    else "across adapter components"
+                )
+                size += f", {item.counted_bytes} counted {detail}"
             lines.append(
                 f"  {item.path}: {size}, ~{item.estimated_tokens} tokens, "
                 f"{item.activation} at {item.activation_rate:.0%} — {item.reason} "
                 f"({item.pattern})"
             )
+            if len(item.components) > 1 or item.components[0].kind != "whole-file":
+                lines.extend(
+                    (
+                        f"    [{component.kind}] {component.counted_bytes} counted bytes, "
+                        f"~{component.estimated_tokens} tokens, {component.activation} at "
+                        f"{component.activation_rate:.0%} — {component.reason}"
+                    )
+                    for component in item.components
+                )
     if not matched:
         lines.append("No matching context edge.")
     return "\n".join(lines) + "\n"

@@ -13,7 +13,7 @@ from jsonschema import Draft202012Validator
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("report", type=Path)
-    parser.add_argument("--schema", type=Path, default=Path("schemas/report-v1.0.schema.json"))
+    parser.add_argument("--schema", type=Path, default=Path("schemas/report-v1.1.schema.json"))
     args = parser.parse_args()
     schema = cast(dict[str, Any], json.loads(args.schema.read_text(encoding="utf-8")))
     report = cast(dict[str, Any], json.loads(args.report.read_text(encoding="utf-8")))

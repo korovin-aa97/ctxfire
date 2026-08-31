@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="420" viewBox="0 0 1000 420">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07111f"/>
+      <stop offset="1" stop-color="#35201c"/>
+    </linearGradient>
+    <linearGradient id="fire" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffb347"/>
+      <stop offset="1" stop-color="#ff5f56"/>
+    </linearGradient>
+  </defs>
+  <rect width="1000" height="420" rx="24" fill="url(#bg)"/>
+  <circle cx="910" cy="45" r="180" fill="#ff8a5c" opacity="0.13"/>
+  <circle cx="940" cy="405" r="210" fill="#ff784f" opacity="0.08"/>
+
+  <text x="60" y="68" fill="url(#fire)" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="20" font-weight="700">OPEN SOURCE · LOCAL ONLY · ZERO TELEMETRY</text>
+  <text x="60" y="158" fill="#f7fbff" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="76" font-weight="800" letter-spacing="-3">ctxfire</text>
+  <text x="60" y="203" fill="#bdd1dd" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="24">What does each coding agent load every day?</text>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17">
+    <rect x="60" y="266" width="150" height="72" rx="14" fill="#241d22" stroke="#9b5b48"/>
+    <text x="135" y="308" text-anchor="middle" fill="#fff3ed">agent</text>
+    <path d="M210 302 H252" fill="none" stroke="#ff9566" stroke-width="3"/>
+    <path d="M244 294 L254 302 L244 310" fill="none" stroke="#ff9566" stroke-width="3"/>
+
+    <rect x="254" y="266" width="164" height="72" rx="14" fill="#241d22" stroke="#9b5b48"/>
+    <text x="336" y="308" text-anchor="middle" fill="#fff3ed">adapter@1</text>
+    <path d="M418 302 H460" fill="none" stroke="#ff9566" stroke-width="3"/>
+    <path d="M452 294 L462 302 L452 310" fill="none" stroke="#ff9566" stroke-width="3"/>
+
+    <rect x="462" y="266" width="164" height="72" rx="14" fill="#241d22" stroke="#9b5b48"/>
+    <text x="544" y="296" text-anchor="middle" fill="#fff3ed">context</text>
+    <text x="544" y="319" text-anchor="middle" fill="#c6aaa0" font-size="14">exact bytes</text>
+    <path d="M626 302 H668" fill="none" stroke="#ff9566" stroke-width="3"/>
+    <path d="M660 294 L670 302 L660 310" fill="none" stroke="#ff9566" stroke-width="3"/>
+
+    <rect x="670" y="252" width="270" height="100" rx="14" fill="#30201f" stroke="#ff8b61" stroke-width="2"/>
+    <text x="805" y="294" text-anchor="middle" fill="#fff8f4">tokens/fire × fires/day</text>
+    <text x="805" y="321" text-anchor="middle" fill="#c6aaa0" font-size="14">estimate + assumptions</text>
+  </g>
+
+  <text x="60" y="390" fill="#86a9ba" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="17">Codex · Claude Code · AGENTS.md · JSON · SARIF · CI budgets</text>
+</svg>

@@ -20,7 +20,7 @@ root. A semantics change needs a new adapter version.
 
 ## Add a tokenizer
 
-The default v0.1 estimator is deliberately dependency-free; the `tokenizers`
+The default estimator is deliberately dependency-free; the `tokenizers`
 extra provides an opt-in tiktoken backend. Any further tokenizer extension must:
 
 - be opt-in and name/version itself in `assumptions.tokenizer`;
@@ -34,6 +34,7 @@ Tokenizer support is not permission to print or retain file contents.
 
 ## Add a report field
 
-Optional additive fields can remain in schema 1.0 after updating the JSON Schema
-and stability tests. Changes to type, aggregation, required fields, or meaning
-need a new schema and a migration note.
+Optional additive fields can remain in the current schema after updating the
+JSON Schema and stability tests. Changes to type, aggregation, required fields,
+or meaning need a new schema and a migration note. Schema 1.1 is the first
+component-aware contract; preserve schema 1.0 when accepting old snapshots.

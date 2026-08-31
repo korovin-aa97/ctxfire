@@ -3,15 +3,23 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 from . import __version__
-from .adapters import exact_probe_paths, excluded, inclusions, matches
-from .config import Config
+from .adapters import Inclusion, exact_probe_paths, excluded, inclusions, matches
+from .config import AgentConfig, Config
 from .discovery import inventory, path_kind
-from .model import REPORT_SCHEMA_VERSION, AgentReport, ContextFile, ScanReport
+from .frontmatter import Frontmatter, first_markdown_paragraph, read_frontmatter, yaml_boolean
+from .model import (
+    REPORT_SCHEMA_VERSION,
+    AgentReport,
+    ContextComponent,
+    ContextFile,
+    ScanReport,
+)
 
 
 @lru_cache(maxsize=16)
@@ -24,15 +32,319 @@ def _tiktoken_encoding(name: str) -> Any:
         raise ValueError(f"unknown tiktoken encoding: {name}") from error
 
 
-def _tokenize_file(path: Path, counted_bytes: int, tokenizer: str) -> int:
+def _tokenize_bytes(content: bytes, tokenizer: str) -> int:
     encoding_name = tokenizer.partition(":")[2]
-    with path.open("rb") as handle:
-        content = handle.read(counted_bytes).decode("utf-8", errors="replace")
-    return len(_tiktoken_encoding(encoding_name).encode(content, disallowed_special=()))
+    text = content.decode("utf-8", errors="replace")
+    return len(_tiktoken_encoding(encoding_name).encode(text, disallowed_special=()))
+
+
+@dataclass(frozen=True)
+class _ClaudeV2Metadata:
+    frontmatter: dict[str, Frontmatter]
+    active_agent_paths: frozenset[str]
+    selected_agent_path: str | None
+    preloaded_skill_paths: frozenset[str]
+    warnings: tuple[str, ...]
+
+
+def _scope_depth(path: str, marker: str) -> int:
+    prefix = path.partition(marker)[0].rstrip("/")
+    return 0 if not prefix else len(prefix.split("/"))
+
+
+def _paths_for_reason(
+    paths: set[str], rules: tuple[Inclusion, ...], reason_fragment: str
+) -> set[str]:
+    patterns = [rule.pattern for rule in rules if reason_fragment in rule.reason]
+    return {path for path in paths if any(matches(path, pattern) for pattern in patterns)}
+
+
+def _choose_named_paths(
+    candidates: set[str],
+    frontmatter: dict[str, Frontmatter],
+    *,
+    marker: str,
+    default_name: bool,
+) -> tuple[dict[str, str], list[str]]:
+    grouped: dict[str, list[str]] = {}
+    warnings: list[str] = []
+    for path in sorted(candidates):
+        document = frontmatter[path]
+        name = document.scalar("name")
+        if not name and default_name:
+            name = Path(path).parent.name
+        if not name:
+            warnings.append(f"{path}: missing required frontmatter name; skipped")
+            continue
+        grouped.setdefault(name, []).append(path)
+
+    chosen: dict[str, str] = {}
+    for name, paths in sorted(grouped.items()):
+        ranked = sorted(paths, key=lambda item: (_scope_depth(item, marker), item), reverse=True)
+        chosen[name] = ranked[0]
+        top_depth = _scope_depth(ranked[0], marker)
+        same_scope = [item for item in ranked if _scope_depth(item, marker) == top_depth]
+        if len(same_scope) > 1:
+            warnings.append(
+                f"duplicate {name!r} definitions at one Claude project scope; "
+                f"selected {ranked[0]} deterministically but Claude filesystem order is unspecified"
+            )
+    return chosen, warnings
+
+
+def _claude_v2_metadata(
+    root: Path,
+    agent: AgentConfig,
+    agent_paths: set[str],
+    rules: tuple[Inclusion, ...],
+) -> _ClaudeV2Metadata:
+    agent_candidates = _paths_for_reason(agent_paths, rules, "project subagent")
+    project_skill_candidates = _paths_for_reason(agent_paths, rules, "project skill")
+    skill_candidates = set(project_skill_candidates)
+    skill_candidates.update(_paths_for_reason(agent_paths, rules, "descendant skill"))
+    rule_candidates = _paths_for_reason(agent_paths, rules, "project rule")
+    parsed_paths = agent_candidates | skill_candidates | rule_candidates
+    documents = {path: read_frontmatter(root / path) for path in sorted(parsed_paths)}
+    warnings = [
+        f"{path}: {document.warning}"
+        for path, document in documents.items()
+        if document.warning is not None
+    ]
+
+    agents_by_name, name_warnings = _choose_named_paths(
+        agent_candidates,
+        documents,
+        marker=".claude/agents/",
+        default_name=False,
+    )
+    warnings.extend(name_warnings)
+    skills_by_name, skill_warnings = _choose_named_paths(
+        project_skill_candidates,
+        documents,
+        marker=".claude/skills/",
+        default_name=True,
+    )
+    warnings.extend(skill_warnings)
+
+    selected_agent_path = None
+    preloaded: set[str] = set()
+    if agent.claude_subagent is not None:
+        selected_agent_path = agents_by_name.get(agent.claude_subagent)
+        if selected_agent_path is None:
+            warnings.append(
+                f"{agent.name}: Claude subagent {agent.claude_subagent!r} was not found"
+            )
+        else:
+            for skill_name in documents[selected_agent_path].items("skills") or ():
+                skill_path = skills_by_name.get(skill_name)
+                if skill_path is None:
+                    warnings.append(
+                        f"{agent.name}: preloaded Claude skill {skill_name!r} was not found"
+                    )
+                    continue
+                if yaml_boolean(
+                    documents[skill_path].scalar("disable-model-invocation"), default=False
+                ):
+                    warnings.append(
+                        f"{agent.name}: Claude skill {skill_name!r} disables model invocation "
+                        "and cannot be preloaded"
+                    )
+                    continue
+                preloaded.add(skill_path)
+
+    return _ClaudeV2Metadata(
+        frontmatter=documents,
+        active_agent_paths=frozenset(agents_by_name.values()),
+        selected_agent_path=selected_agent_path,
+        preloaded_skill_paths=frozenset(preloaded),
+        warnings=tuple(warnings),
+    )
+
+
+def _estimated_tokens(content: bytes, counted_bytes: int, config: Config) -> int:
+    if config.assumptions.tokenizer == "byte-estimate":
+        return math.ceil(counted_bytes / config.assumptions.bytes_per_token)
+    return _tokenize_bytes(content[:counted_bytes], config.assumptions.tokenizer)
+
+
+def _component(
+    *,
+    kind: str,
+    content: bytes,
+    activation: str,
+    activation_rate: float,
+    reason: str,
+    config: Config,
+    counted_bytes: int | None = None,
+) -> ContextComponent:
+    size = len(content) if counted_bytes is None else counted_bytes
+    return ContextComponent(
+        kind=kind,
+        counted_bytes=size,
+        estimated_tokens=_estimated_tokens(content, size, config),
+        activation=activation,
+        activation_rate=activation_rate,
+        reason=reason,
+    )
+
+
+def _catalog_content(document: Frontmatter, default_name: str) -> bytes:
+    name = document.scalar("name") or default_name
+    description = document.scalar("description") or (
+        "" if document.warning is not None else first_markdown_paragraph(document.body)
+    )
+    when_to_use = document.scalar("when_to_use") or ""
+    combined = " ".join(part for part in (description, when_to_use) if part).strip()[:1536]
+    return f"{name}: {combined}".encode() if combined else name.encode()
+
+
+def _context_file(
+    *,
+    path: str,
+    exact_bytes: int,
+    pattern: str,
+    components: tuple[ContextComponent, ...],
+    reason: str,
+) -> ContextFile:
+    estimated_tokens = sum(component.estimated_tokens for component in components)
+    weighted_tokens = sum(
+        component.estimated_tokens * component.activation_rate for component in components
+    )
+    activation_rate = (
+        max((component.activation_rate for component in components), default=0.0)
+        if estimated_tokens == 0
+        else weighted_tokens / estimated_tokens
+    )
+    activations = {(component.activation, component.activation_rate) for component in components}
+    activation = next(iter(activations))[0] if len(activations) == 1 else "mixed"
+    return ContextFile(
+        path=path,
+        exact_bytes=exact_bytes,
+        counted_bytes=sum(component.counted_bytes for component in components),
+        estimated_tokens=estimated_tokens,
+        activation=activation,
+        activation_rate=activation_rate,
+        reason=reason,
+        pattern=pattern,
+        components=components,
+    )
+
+
+def _claude_v2_components(
+    *,
+    path: str,
+    content: bytes,
+    rule: Inclusion,
+    agent: AgentConfig,
+    metadata: _ClaudeV2Metadata,
+    config: Config,
+) -> tuple[ContextComponent, ...] | None:
+    document = metadata.frontmatter.get(path)
+    conditional_rate = config.assumptions.conditional_activation_rate
+    if "project rule" in rule.reason:
+        path_patterns = None if document is None else document.items("paths")
+        conditional = path_patterns is not None
+        activation = "conditional" if conditional else "always"
+        rate = conditional_rate if conditional else 1.0
+        detail = (
+            "paths frontmatter present; loads only for matching files"
+            if conditional
+            else "no paths frontmatter; loads at session start"
+        )
+        return (
+            _component(
+                kind="rule-body",
+                content=content,
+                activation=activation,
+                activation_rate=rate,
+                reason=f"claude-code@2 project rule: {detail}",
+                config=config,
+            ),
+        )
+
+    if "skill" in rule.reason:
+        if document is None:
+            return None
+        if path in metadata.preloaded_skill_paths:
+            return (
+                _component(
+                    kind="preloaded-skill",
+                    content=content,
+                    activation="always",
+                    activation_rate=1.0,
+                    reason="claude-code@2 skill preloaded by selected subagent skills frontmatter",
+                    config=config,
+                ),
+            )
+        components: list[ContextComponent] = []
+        if not yaml_boolean(document.scalar("disable-model-invocation"), default=False):
+            catalog = _catalog_content(document, Path(path).parent.name)
+            catalog_is_conditional = "descendant skill" in rule.reason
+            components.append(
+                _component(
+                    kind="skill-catalog",
+                    content=catalog,
+                    activation="conditional" if catalog_is_conditional else "always",
+                    activation_rate=conditional_rate if catalog_is_conditional else 1.0,
+                    reason=(
+                        "claude-code@2 skill name/description catalog; "
+                        + (
+                            "available after descendant subtree discovery"
+                            if catalog_is_conditional
+                            else "model-visible at session start"
+                        )
+                        + "; runtime wrapper bytes excluded"
+                    ),
+                    config=config,
+                )
+            )
+        components.append(
+            _component(
+                kind="skill-body",
+                content=content,
+                activation="conditional",
+                activation_rate=conditional_rate,
+                reason="claude-code@2 full skill content; loaded when invoked",
+                config=config,
+            )
+        )
+        return tuple(components)
+
+    if "project subagent" in rule.reason:
+        if path not in metadata.active_agent_paths or document is None:
+            return None
+        if agent.claude_subagent is not None:
+            if path != metadata.selected_agent_path:
+                return None
+            return (
+                _component(
+                    kind="subagent-definition",
+                    content=content,
+                    activation="always",
+                    activation_rate=1.0,
+                    reason="claude-code@2 selected subagent definition and system prompt",
+                    config=config,
+                ),
+            )
+        catalog = _catalog_content(document, Path(path).stem)
+        return (
+            _component(
+                kind="subagent-catalog",
+                content=catalog,
+                activation="always",
+                activation_rate=1.0,
+                reason=(
+                    "claude-code@2 model-visible project subagent name/description catalog; "
+                    "definition body stays in isolated subagent context"
+                ),
+                config=config,
+            ),
+        )
+    return None
 
 
 def scan(config: Config) -> ScanReport:
-    """Build a deterministic report, reading content only for an opt-in tokenizer."""
+    """Build a deterministic report under the configured adapter/privacy contract."""
 
     found = inventory(config.root)
     warnings = [f"skipped symlink: {path}" for path in found.skipped_symlinks]
@@ -47,7 +359,6 @@ def scan(config: Config) -> ScanReport:
 
     reports: list[AgentReport] = []
     out_of_git_probes: set[str] = set()
-    token_cache: dict[tuple[str, int], int] = {}
     for agent in config.agents:
         selected: dict[str, ContextFile] = {}
         agent_paths = set(found.paths)
@@ -64,6 +375,13 @@ def scan(config: Config) -> ScanReport:
                 agent_paths.add(path)
         available = {path: (config.root / path).stat().st_size for path in agent_paths}
         rules = inclusions(agent, available)
+        claude_metadata = (
+            _claude_v2_metadata(config.root, agent, agent_paths, rules)
+            if agent.adapter == "claude-code@2"
+            else None
+        )
+        if claude_metadata is not None:
+            warnings.extend(claude_metadata.warnings)
         instruction_bytes_used = 0
         for rule in rules:
             matches_for_rule = [
@@ -97,27 +415,57 @@ def scan(config: Config) -> ScanReport:
                     if rule.activation == "always"
                     else config.assumptions.conditional_activation_rate
                 )
-                cache_key = (path, counted_bytes)
-                if cache_key not in token_cache:
-                    if config.assumptions.tokenizer == "byte-estimate":
-                        token_cache[cache_key] = math.ceil(
-                            counted_bytes / config.assumptions.bytes_per_token
-                        )
-                    else:
-                        token_cache[cache_key] = _tokenize_file(
-                            config.root / path,
-                            counted_bytes,
-                            config.assumptions.tokenizer,
-                        )
-                fact = ContextFile(
+                needs_content = config.assumptions.tokenizer != "byte-estimate" or (
+                    claude_metadata is not None
+                    and any(
+                        fragment in rule.reason
+                        for fragment in ("project rule", "skill", "project subagent")
+                    )
+                )
+                content = (config.root / path).read_bytes() if needs_content else b""
+                special_components = (
+                    _claude_v2_components(
+                        path=path,
+                        content=content,
+                        rule=rule,
+                        agent=agent,
+                        metadata=claude_metadata,
+                        config=config,
+                    )
+                    if claude_metadata is not None
+                    else None
+                )
+                if claude_metadata is not None and any(
+                    fragment in rule.reason
+                    for fragment in ("project rule", "skill", "project subagent")
+                ):
+                    if special_components is None:
+                        continue
+                    components = special_components
+                    fact_reason = (
+                        "claude-code@2 mixed catalog/body activation"
+                        if len(special_components) > 1
+                        else special_components[0].reason
+                    )
+                else:
+                    components = (
+                        _component(
+                            kind="whole-file",
+                            content=content,
+                            counted_bytes=counted_bytes,
+                            activation=rule.activation,
+                            activation_rate=activation_rate,
+                            reason=rule.reason,
+                            config=config,
+                        ),
+                    )
+                    fact_reason = rule.reason
+                fact = _context_file(
                     path=path,
                     exact_bytes=exact_bytes,
-                    counted_bytes=counted_bytes,
-                    estimated_tokens=token_cache[cache_key],
-                    activation=rule.activation,
-                    activation_rate=activation_rate,
-                    reason=rule.reason,
                     pattern=rule.pattern,
+                    components=components,
+                    reason=fact_reason,
                 )
                 previous = selected.get(path)
                 if previous is None or (
@@ -131,7 +479,13 @@ def scan(config: Config) -> ScanReport:
                 ):
                     selected[path] = fact
         files = tuple(selected[path] for path in sorted(selected))
-        tokens_fire = math.ceil(sum(item.estimated_tokens * item.activation_rate for item in files))
+        tokens_fire = math.ceil(
+            sum(
+                component.estimated_tokens * component.activation_rate
+                for item in files
+                for component in item.components
+            )
+        )
         daily_estimate = tokens_fire * agent.fires_per_day
         if not math.isfinite(daily_estimate):
             raise ValueError(f"computed daily token estimate is not finite for {agent.name}")
@@ -179,6 +533,7 @@ def scan(config: Config) -> ScanReport:
             "content_access": (
                 "metadata-only"
                 if config.assumptions.tokenizer == "byte-estimate"
+                and all(agent.adapter != "claude-code@2" for agent in config.agents)
                 else "matched-file-content-local"
             ),
             "symlink_policy": "skip-with-warning",

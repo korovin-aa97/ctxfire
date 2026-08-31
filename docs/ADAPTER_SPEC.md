@@ -1,6 +1,6 @@
 # Adapter specification
 
-Adapter contract version: 1. Updated: 2026-08-30.
+Adapter contract version: 2. Updated: 2026-08-31.
 
 An adapter maps public engine loading rules to context graph edges. The adapter
 name is versioned because engine behavior changes independently of `ctxfire`.
@@ -17,14 +17,18 @@ Each configured agent has:
 - optional always-on `include`, conditional `conditional`, and `exclude` globs.
 
 Each edge has one repository-relative file path, exact current byte size,
-estimated tokens, activation class/rate, reason, and originating pattern. When
+estimated tokens, activation class/rate, reason, and originating pattern.
+Report schema 1.1 can split an edge into independently activated components—for
+example, an always-visible skill catalog entry plus a conditional full body.
+`counted_bytes` is the sum of modeled components and can exceed `exact_bytes`
+when the same source contributes to more than one runtime surface. When
 multiple rules select the same path, the strongest activation rate wins; the
 largest counted surface breaks a tie, and an explicit include is authoritative
 when both are otherwise equal. This deduplicates a file within one agent while
 intentionally retaining the cost when the same file is loaded by different
 agents.
 
-Cycles cannot occur in adapter v1 because the graph does not parse Markdown
+Cycles cannot occur in the current adapters because the graph does not parse Markdown
 imports. Referenced files must be configured explicitly. This conservative
 boundary prevents accidental content parsing and false transitive claims.
 
@@ -63,8 +67,8 @@ the chain. Configure the field if your Codex profile changes the default.
 Codex scans `.agents/skills` in every ancestor directory from the working
 directory to repository root. The adapter records each direct
 `.agents/skills/*/SKILL.md` body as conditional because the full body loads only
-when selected. The always-visible name/description catalog is not estimated in
-metadata-only v0.1. Supporting files referenced by a skill are not inferred;
+when selected. The always-visible name/description catalog is not estimated by
+`codex@1`. Supporting files referenced by a skill are not inferred;
 list them under `conditional` if they affect budgeting.
 
 Primary semantics reference: OpenAI Codex documentation, “Custom instructions
@@ -102,12 +106,64 @@ Primary semantics references: Anthropic Claude Code documentation, “Manage
 Claude's memory” and “Extend Claude with skills,” checked 2026-08-30:
 
 - https://code.claude.com/docs/en/memory
-- https://code.claude.com/docs/en/skills
+- https://code.claude.com/docs/en/slash-commands
 
 Uncertainty: imported memory files, stripped HTML comments, auto memory,
 user/enterprise policy, setting-source exclusions, additional directories, and
 content-derived rule activation are not inferred. Claude can follow symlinked
 memory/skill paths in some environments; `ctxfire` skips them and warns.
+
+## `claude-code@2`
+
+`claude-code@2` preserves the v1 project-memory chain and adds narrowly scoped,
+local parsing for repository-authored Claude metadata:
+
+- each `.claude/rules/**/*.md` file without top-level `paths` is always-on;
+  one with `paths` is conditional and uses
+  `project.conditional_activation_rate`;
+- a project skill contributes an always-on catalog component containing its
+  effective name plus `description`/`when_to_use` text, capped at 1,536
+  characters, and a conditional full-file component;
+- `disable-model-invocation: true` removes the catalog component but leaves the
+  manually invocable body conditional;
+- a main session includes the effective project subagent name/description
+  catalog, not each definition body;
+- setting `claude_subagent = "<name>"` selects a project subagent invocation or
+  `--agent` session. Its definition and every resolvable `skills:` preload are
+  always-on; missing or disabled preloads produce warnings instead of silently
+  retaining stale config;
+- skills below the starting working directory remain conditional until Claude
+  discovers that subtree.
+
+The selected subagent still receives the normal project memory/rules surface;
+the adapter omits only the other subagent catalog entries from its isolated
+context. Unlisted project skills remain available on demand.
+
+The parser is intentionally dependency-free. It accepts the top-level scalar,
+inline-list, indented-list, literal, and folded frontmatter shapes needed by
+these fields. Malformed frontmatter is warned and treated conservatively; no
+repository file is executed. The byte estimator reads only matched rule,
+skill, and subagent Markdown locally for this adapter and records
+`matched-file-content-local` in the report.
+
+Primary semantics references: Anthropic Claude Code documentation, checked
+2026-08-31:
+
+- https://code.claude.com/docs/en/memory
+- https://code.claude.com/docs/en/slash-commands
+- https://code.claude.com/docs/en/sub-agents
+- https://code.claude.com/docs/en/features-overview
+
+Uncertainty: the configured activation rate summarizes a workload; ctxfire does
+not observe which files a session opens or evaluate the rule globs against a
+future task. Claude's global skill-listing budget, usage-based description
+truncation, `skillOverrides`, settings-source exclusions, dynamic skill
+commands/arguments, supporting files, Markdown imports, auto-memory, agent
+memory, hooks, additional directories, user/enterprise configuration, runtime
+wrappers, conversation/tool output, and prompt caching remain outside the
+static repository model. Full skill/definition components use source-file bytes
+as a reproducible upper bound because the runtime's exact rendered wrapper and
+frontmatter stripping are not a public byte contract.
 
 ## Discovery contract
 

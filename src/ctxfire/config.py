@@ -25,6 +25,7 @@ class AgentConfig:
     instruction_fallback_filenames: tuple[str, ...]
     instruction_max_bytes: int | None
     claude_rules_activation: str
+    claude_subagent: str | None
 
 
 @dataclass(frozen=True)
@@ -118,7 +119,13 @@ def load_config(path: Path) -> Config:
         if work_path.is_absolute() or ".." in work_path.parts:
             raise ValueError(f"working_directory must stay inside project root: {name}")
         adapter = str(raw.get("adapter", "explicit@1"))
-        if adapter not in {"explicit@1", "agents-md@1", "codex@1", "claude-code@1"}:
+        if adapter not in {
+            "explicit@1",
+            "agents-md@1",
+            "codex@1",
+            "claude-code@1",
+            "claude-code@2",
+        }:
             raise ValueError(f"unsupported adapter {adapter!r} for {name}")
         fallback_names = _patterns(raw, "instruction_fallback_filenames")
         if any("/" in item or "\\" in item for item in fallback_names):
@@ -134,6 +141,17 @@ def load_config(path: Path) -> Config:
         claude_rules_activation = str(raw.get("claude_rules_activation", "always"))
         if claude_rules_activation not in {"always", "conditional"}:
             raise ValueError(f"claude_rules_activation must be always or conditional for {name}")
+        if adapter == "claude-code@2" and "claude_rules_activation" in raw:
+            raise ValueError(
+                f"claude_rules_activation is derived from each rule's paths frontmatter "
+                f"under claude-code@2 for {name}"
+            )
+        claude_subagent_raw = raw.get("claude_subagent")
+        if claude_subagent_raw is not None and adapter != "claude-code@2":
+            raise ValueError(f"claude_subagent requires adapter claude-code@2 for {name}")
+        claude_subagent = None if claude_subagent_raw is None else str(claude_subagent_raw).strip()
+        if claude_subagent_raw is not None and not claude_subagent:
+            raise ValueError(f"claude_subagent must be non-empty for {name}")
         agents.append(
             AgentConfig(
                 name=name,
@@ -147,6 +165,7 @@ def load_config(path: Path) -> Config:
                 instruction_fallback_filenames=fallback_names,
                 instruction_max_bytes=instruction_max_bytes,
                 claude_rules_activation=claude_rules_activation,
+                claude_subagent=claude_subagent,
             )
         )
     return Config(

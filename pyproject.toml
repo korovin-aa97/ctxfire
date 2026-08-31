@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ctxfire"
-version = "0.1.3"
+version = "0.2.0"
 description = "Explain and budget static context graphs for coding agents"
 readme = "README.md"
 license = "MIT"
@@ -53,6 +53,7 @@ core-metadata-version = "2.4"
 
 [tool.hatch.build.targets.sdist]
 core-metadata-version = "2.4"
+exclude = ["docs/LAUNCH_KIT.md"]
 
 [tool.ruff]
 target-version = "py311"

@@ -12,13 +12,9 @@ conditional_activation_rate = 0.25
 
 [[agents]]
 name = "reviewer"
-adapter = "claude-code@1"
+adapter = "claude-code@2"
+claude_subagent = "reviewer"
 fires_per_day = 8
-include = [
-  "AGENTS.md",
-  ".claude/agents/reviewer.md"
-]
-conditional = [".claude/skills/regression-review/**/*.md"]
 
 [[agents]]
 name = "implementer"
